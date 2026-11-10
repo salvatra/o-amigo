@@ -10,6 +10,7 @@ from .sandbox import Sandbox
 from .schema import validate
 from .files import Files
 from .documents import Documents
+from .obsidian import Obsidian
 
 TEXT={'type':'string'}
 PAGES={'type':'array','items':{'type':'integer','minimum':1,'maximum':1000000},'maxItems':10000}
@@ -39,6 +40,8 @@ SPECS = [
  ('archive_info','Inspect ZIP or TAR metadata in isolation.',{'path':TEXT},['path']),
  ('archive_extract','Safely extract ZIP or TAR into a new folder; rejects links, traversal and bombs.',{'path':TEXT,'destination':TEXT},['path','destination']),
  ('archive_create','Create ZIP from authorized files or folders, excluding protected paths.',{'sources':{'type':'array','items':TEXT,'minItems':1,'maxItems':100},'destination':TEXT},['sources','destination']),
+ ('obsidian_search','Search Markdown notes in an explicitly selected Obsidian vault.',{'vault':TEXT,'text':TEXT,'limit':{'type':'integer','minimum':1,'maximum':500}},['vault','text']),
+ ('obsidian_move','Move or rename a note/attachment within a vault, updating native wiki, Markdown and canvas links in one recoverable batch. Refuses ambiguous links.',{'vault':TEXT,'source':TEXT,'destination':TEXT},['vault','source','destination']),
 ]
 
 def schemas():
@@ -60,7 +63,7 @@ class Tools:
             raise Denied('Unknown tool')
         validate(args,{'type':'object','properties':spec[2],'required':spec[3]})
         writes={'create_folder','write_file','edit_file','copy_file','move_file','trash_file','set_file_times',
-                'pdf_pages','pdf_split','archive_create','archive_extract'}
+                'pdf_pages','pdf_split','archive_create','archive_extract','obsidian_move'}
         if name in writes and not self.files:raise Denied('Writes are not authorized')
         if name=='search_files':
             return Files(self.policy,None,self.cancel).search(args['path'],args.get('pattern','*'),args.get('text'),args.get('limit',100))
@@ -72,6 +75,11 @@ class Tools:
         if name=='set_file_times':return self.files.timestamps(**args)
         if name=='pdf_pages':return self.documents.pdf(**args)
         if name=='pdf_split':return self.documents.split_pdf(**args)
+        if name=='obsidian_move':return Obsidian(self.files).move(**args)
+        if name=='obsidian_search':
+            files=self.files or Files(self.policy,None,self.cancel)
+            vault,_=Obsidian(files).inventory(args['vault'])
+            return files.search(str(vault),'*.md',args['text'],args.get('limit',100))
         if name.startswith('archive_'):
             documents=self.documents or Documents(Files(self.policy,None,self.cancel),self.sandbox)
             return documents.archive({'archive_info':'inspect','archive_extract':'extract','archive_create':'create'}[name],**args)
