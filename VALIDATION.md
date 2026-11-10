@@ -26,6 +26,9 @@ Development evidence; this is not a release acceptance report yet.
 - Hotspot timer tested natively; exact 96px region and multiple output coordinates
   tested with the actual script under QJSEngine. Physical pointer activation still
   needs final installation verification.
+- Optional `.plasmoid` package built and installed into a disposable data directory;
+  `plasmawindowed` loaded it without QML errors. Its actual QML D-Bus bridge passed
+  snapshot, pushed updates, send, paginated history and missing-service checks.
 
 The standalone popup uses PlasmaCore.Dialog with a utility-window role. This keeps
 the native Plasma background/blur/slide behavior while allowing KWin to position

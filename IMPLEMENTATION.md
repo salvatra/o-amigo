@@ -25,10 +25,11 @@ has been delivered.
 - Seven settings categories, KWallet account UI, recovery/export and enforced per-tool disabling.
 - D-Bus activation/singleton, keyboard controls, event-driven KWin focus/shortcut and exact hover-zone logic.
 - Native Tidal and Breeze GUI checks; KDE shortcut opens centered below the panel and restores focus.
+- Optional Plasma widget built from the same ChatView source; event-driven D-Bus client and missing-service guidance.
 
 ## Required before migration or release
 
-- Installed lifecycle, final multi-desktop/monitor checks and optional shared widget frontend.
+- Installed lifecycle and final multi-desktop/monitor checks.
 - Recovery interface and broader concurrent-change/cancellation coverage.
 - Device, CUPS and approved package-install adapters.
 - Isolated browser with controlled network proxy.

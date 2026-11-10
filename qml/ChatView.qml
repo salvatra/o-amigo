@@ -23,9 +23,10 @@ Item {
     Component.onCompleted: { syncMessages(); prompt.text = state.draft; }
     signal hideRequested()
     function focusComposer() { if (state.ready) prompt.forceActiveFocus(); else key.forceActiveFocus(); }
-    function refreshHistory() { historyRows = JSON.parse(bridge.historyPage(historySearch.text, 0)); }
+    function refreshHistory() { bridge.requestHistory(historySearch.text, 0); }
     Connections {
         target: bridge
+        function onHistoryReady(text, append) { view.historyRows = append ? view.historyRows.concat(JSON.parse(text)) : JSON.parse(text); }
         function onChanged() {
             const oldId = view.state.conversation;
             view.state = JSON.parse(bridge.stateJson);
@@ -59,9 +60,10 @@ Item {
                     Kirigami.Icon { source: "help-hint"; Layout.alignment: Qt.AlignHCenter; implicitWidth: 48; implicitHeight: 48 }
                     Kirigami.Heading { text: "Olá. Sou O Amigo."; level: 1; Layout.alignment: Qt.AlignHCenter }
                     PC.Label { text: "Cola a chave do OpenRouter para começar. Fica guardada no KWallet deste computador."; wrapMode: Text.WordWrap; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                    PC.TextField { id: key; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: "Chave do OpenRouter"; enabled: !view.state.keyBusy; onAccepted: { bridge.saveKey(text); text = ""; } }
-                    PC.Button { text: view.state.keyBusy ? "A testar…" : "Guardar e testar"; icon.name: "wallet-open"; enabled: !view.state.keyBusy && key.text.length > 0; Layout.alignment: Qt.AlignHCenter; onClicked: { bridge.saveKey(key.text); key.text = ""; } }
-                    PC.Button { text: "Testar chave já guardada"; flat: true; enabled: !view.state.keyBusy; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.testKey() }
+                    PC.TextField { id: key; visible: !bridge.externalClient; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: "Chave do OpenRouter"; enabled: !view.state.keyBusy; onAccepted: { bridge.saveKey(text); text = ""; } }
+                    PC.Button { visible: !bridge.externalClient; text: view.state.keyBusy ? "A testar…" : "Guardar e testar"; icon.name: "wallet-open"; enabled: !view.state.keyBusy && key.text.length > 0; Layout.alignment: Qt.AlignHCenter; onClicked: { bridge.saveKey(key.text); key.text = ""; } }
+                    PC.Button { visible: !bridge.externalClient; text: "Testar chave já guardada"; flat: true; enabled: !view.state.keyBusy; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.testKey() }
+                    PC.Button { visible: bridge.externalClient; text: "Configurar conta no O Amigo"; icon.name: "configure"; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.openSettings() }
                     PC.Label { text: view.state.notice; wrapMode: Text.WordWrap; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
                 }
             }
@@ -90,7 +92,7 @@ Item {
                     PC.Button { text: "Cancelar"; onClicked: view.deleteId = "" }
                     PC.Button { text: "Eliminar"; onClicked: { bridge.deleteConversation(view.deleteId); view.deleteId = ""; view.refreshHistory(); } }
                 }
-                PC.Button { text: "Carregar mais"; Layout.alignment: Qt.AlignHCenter; onClicked: view.historyRows = view.historyRows.concat(JSON.parse(bridge.historyPage(historySearch.text, view.historyRows.length))) }
+                PC.Button { text: "Carregar mais"; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.requestHistory(historySearch.text, view.historyRows.length) }
             }
             ColumnLayout {
                 spacing: Kirigami.Units.smallSpacing

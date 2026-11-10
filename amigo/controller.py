@@ -36,6 +36,7 @@ class Controller(QObject):
     quitRequested=pyqtSignal()
     visibilityChanged=pyqtSignal(bool)
     placementRequested=pyqtSignal(int,int,int,int)
+    historyReady=pyqtSignal(str,bool)
 
     def __init__(self,settings,data_root,demo=False):
         super().__init__();self.settings=settings;self.data_root=Path(data_root);self.history=History(data_root)
@@ -89,6 +90,8 @@ class Controller(QObject):
     def settingsSchemaJson(self):return json.dumps(schema(),ensure_ascii=False)
     @pyqtProperty(str,constant=True)
     def toolsJson(self):return json.dumps([{'name':s['function']['name'],'description':s['function']['description']} for s in schemas()])
+    @pyqtProperty(bool,constant=True)
+    def externalClient(self):return False
 
     def key_loaded(self,ok,value):
         if ok and value:
@@ -151,6 +154,8 @@ class Controller(QObject):
 
     @pyqtSlot(str,int,result=str)
     def historyPage(self,query,offset):return json.dumps(self.history.conversations(query,offset),ensure_ascii=False)
+    @pyqtSlot(str,int)
+    def requestHistory(self,query,offset):self.historyReady.emit(self.historyPage(query,offset),offset>0)
 
     @pyqtSlot(str)
     def selectConversation(self,identifier):
