@@ -75,3 +75,9 @@ fixtures and Tidal capture/restore acceptance remain outstanding.
   removable-device selection and model-capability reads are asynchronous UI actions.
 - Arch source/widget/package build passed all 81 then-current tests. GitHub's
   Arch/Plasma CI passed at cea1774; later release checks will cover the final commit.
+
+- Final button-driven browser validation found and fixed a Linux PDEATHSIG
+  lifetime issue: the child is now owned by a dedicated thread that lives as
+  long as the browser, rather than a short-lived UI/tool request thread.
+  The regression test launches from a temporary thread and verifies continued
+  page interaction after that thread exits. Both browser suites pass afterwards.

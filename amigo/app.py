@@ -147,7 +147,9 @@ def main():
                 if window.objectName()=='amigoPopup' and isinstance(window,QQuickWindow):window.grabWindow().save(str(args.capture_demo))
         QTimer.singleShot(1200,capture)
     result=app.exec()
-    engine.deleteLater();controller.close();signal.set_wakeup_fd(-1);os.close(read_fd);os.close(write_fd)
+    engine.setOutputWarningsToStandardError(False)
+    from PyQt6 import sip
+    sip.delete(engine);controller.close();signal.set_wakeup_fd(-1);os.close(read_fd);os.close(write_fd)
     return result
 
 if __name__=='__main__':sys.exit(main())

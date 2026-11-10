@@ -32,11 +32,25 @@ class Browser:
             for name in ('profile','downloads','config'): (self.session/name).mkdir(mode=0o700)
             self.theme_config(self.session/'config')
             self.proxy=PublicProxy(self.session/'proxy.sock').start()
-            try:
-                self.process=subprocess.Popen(self.argv(),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                                              env={'PATH':'/usr/bin'},bufsize=0)
+            # Linux PDEATHSIG follows the creating *thread*. Tool/UI request
+            # threads are short-lived, so a dedicated keeper owns the child for
+            # its entire lifetime. --die-with-parent still protects hard crashes.
+            try:argv=self.argv()
             except BaseException:self.close();raise
-            process=self.process
+            launched=threading.Event();aborted=threading.Event();outcome={}
+            def keeper():
+                try:
+                    child=subprocess.Popen(argv,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                                           env={'PATH':'/usr/bin'},bufsize=0)
+                    outcome['process']=child
+                    if aborted.is_set():child.terminate()
+                except BaseException as error:outcome['error']=error
+                finally:launched.set()
+                if 'process' in outcome:outcome['process'].wait()
+            self.keeper=threading.Thread(target=keeper,daemon=True,name='amigo-browser-owner');self.keeper.start()
+            if not launched.wait(10):aborted.set();self.close();raise RuntimeError('Browser process launch timed out')
+            if 'error' in outcome:self.close();raise outcome['error']
+            self.process=outcome['process'];process=self.process
             threading.Thread(target=self.read,args=(process,),daemon=True,name='amigo-browser-results').start()
             threading.Thread(target=self.discard_errors,args=(process,),daemon=True,name='amigo-browser-diagnostics').start()
         if not self.ready.wait(20):

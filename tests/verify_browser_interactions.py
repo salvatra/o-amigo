@@ -44,8 +44,11 @@ try:
  with tempfile.TemporaryDirectory() as folder,patch('amigo.browser.PublicProxy',FixtureProxy):
   browser=Browser(Path(folder),headless=True)
   try:
-   page=browser.request('navigate',{'url':'http://fixture.example/'})
-   assert page['title']=='Fixture'
+   initial=[]
+   launcher=threading.Thread(target=lambda:initial.append(browser.request('navigate',{'url':'http://fixture.example/'})))
+   launcher.start();launcher.join(timeout=30);assert not launcher.is_alive() and initial
+   time.sleep(.2);page=browser.request('read')
+   assert page['title']=='Fixture','Browser died when its initiating request thread exited'
    button=next(e for e in page['elements'] if e['tag']=='button')
    assert browser.request('click',{'id':button['id']})['clicked']
    assert 'Clicked safely' in browser.request('read')['text']
@@ -66,6 +69,6 @@ try:
    finally:timer.cancel()
    assert browser.request('navigate',{'url':'http://fixture.example/'})['title']=='Fixture'
    assert not any(method=='POST' for method,path in requests),requests
-   print(json.dumps({'passed':True,'checks':['link navigation','fixed button action','Portuguese GET search','POST/password form refusal','page POST blocked','cancel and fresh navigation']}))
+   print(json.dumps({'passed':True,'checks':['survives short-lived request thread','link navigation','fixed button action','Portuguese GET search','POST/password form refusal','page POST blocked','cancel and fresh navigation']}))
   finally:browser.close()
 finally:server.shutdown();server.server_close()
