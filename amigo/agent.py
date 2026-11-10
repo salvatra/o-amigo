@@ -6,11 +6,12 @@ from PyQt6.QtCore import QObject,QThread,QTimer,pyqtSignal
 from .network import Stream
 from .protocol import request
 from .policy import Denied
+from .approval import ApprovalRequired
 from .transactions import Conflict,RecoveryUnavailable,Cancelled
 
 MUTATIONS={'create_folder','write_file','edit_file','copy_file','move_file','trash_file','set_file_times',
            'pdf_pages','pdf_split','archive_create','archive_extract','obsidian_move',
-           'usb_mount','usb_unmount','usb_eject','printer_configure','printer_action','package_install','browser_download'}
+           'usb_mount','usb_unmount','usb_eject','printer_configure','printer_action','printer_print','package_install','browser_download'}
 
 class ToolWorker(QThread):
     result=pyqtSignal(object)
@@ -18,6 +19,7 @@ class ToolWorker(QThread):
         super().__init__(parent);self.tools=tools;self.name=name;self.args=args
     def run(self):
         try:self.result.emit({'ok':True,'result':self.tools.call(self.name,self.args)})
+        except ApprovalRequired as error:self.result.emit({'approval':{'token':error.token,'plan':error.plan}})
         except RecoveryUnavailable as error:self.result.emit({'ok':False,'error':str(error),'recovery_required':True})
         except (Denied,Conflict,Cancelled,OSError,ValueError,RuntimeError) as error:
             self.result.emit({'ok':False,'error':str(error)[:1200]})
@@ -35,7 +37,7 @@ class Agent(QObject):
         self.checkpoint.timeout.connect(self.persist)
 
     @property
-    def busy(self):return bool(self.worker or self.stream.reply or self.state and self.state.get('status') in ('running','requesting','tool'))
+    def busy(self):return bool(self.worker or self.stream.reply or self.state and self.state.get('status') in ('running','requesting','tool','approval'))
 
     def start(self,conversation,prompt,thinking=False):
         if self.busy:raise RuntimeError('Já existe uma tarefa em curso.')
@@ -50,6 +52,7 @@ class Agent(QObject):
                     'search_limit':settings['max_searches'],'status':'running','text':'','actions':[],
                     'known_cost':0.0,'unknown_cost_rounds':0,'sources':[],'pending':[],'error':'','providers':[]}
         self.state['elapsed']=0.0
+        self.state['fetches']=0;self.state['fetch_limit']=settings.get('max_fetches',6)
         self.identifier=None;self.round_text='';self.cancel_event.clear();self.persist();self.next_round()
 
     def restore(self,conversation):
@@ -65,6 +68,7 @@ class Agent(QObject):
         # Counters never reset. Continue grants another explicit bounded tranche.
         self.state['round_limit']=max(self.state['round_limit'],self.state['rounds'])+self.settings.value['max_rounds']
         self.state['search_limit']=max(self.state['search_limit'],self.state['searches'])+self.settings.value['max_searches']
+        self.state['fetch_limit']=max(self.state.get('fetch_limit',0),self.state.get('fetches',0))+self.settings.value.get('max_fetches',6)
         self.state['status']='running';self.state['error']='';self.cancel_event.clear();self.persist();self.next_round()
 
     def persist(self):
@@ -89,7 +93,9 @@ class Agent(QObject):
             self.finish('paused','Limite de rondas atingido. O progresso ficou guardado; podes continuar.');return
         if not self.key():self.finish('failed','A chave não está disponível.');return
         self.round_text='';settings=self.state['settings'];remaining=max(0,self.state['search_limit']-self.state['searches'])
-        body=request(settings,self.state['messages'],self.state['thinking'],settings['tools_enabled'],remaining)
+        fetch_remaining=max(0,self.state.get('fetch_limit',0)-self.state.get('fetches',0)) if settings['web_enabled'] else 0
+        body=request(settings,self.state['messages'],self.state['thinking'],settings['tools_enabled'],remaining,fetch_remaining)
+        self.state['fetch_reservation']=fetch_remaining;self.state['fetches']=self.state.get('fetches',0)+fetch_remaining
         reserve=remaining if settings['web_enabled'] else 0
         self.state['search_reservation']=reserve;self.state['searches']+=reserve
         self.state['rounds']+=1;self.state['status']='requesting';self.persist()
@@ -103,6 +109,8 @@ class Agent(QObject):
         used=metadata.get('searches')
         if type(used)is int and 0<=used<=reserved:self.state['searches']-=reserved-used
         elif reserved:self.state['search_usage_uncertain']=True
+        reserved_fetches=self.state.pop('fetch_reservation',0);used_fetches=metadata.get('fetches')
+        if type(used_fetches)is int and 0<=used_fetches<=reserved_fetches:self.state['fetches']-=reserved_fetches-used_fetches
         if 'cost' in metadata:self.state['known_cost']+=metadata['cost']
         else:self.state['unknown_cost_rounds']+=1
         self.state['elapsed']=self.state.get('elapsed',0)+metadata.get('elapsed',0)
@@ -142,7 +150,11 @@ class Agent(QObject):
             self.history.finish_call(self.identifier,call['id'],result);self.consume_tool(result);return
         self.state['actions'].append({'id':call['id'],'name':name,'arguments':args,'status':'running'})
         self.persist()
-        self.worker=ToolWorker(self.tools_factory(self.cancel_event),name,args,self)
+        self.launch_worker(self.tools_factory(self.cancel_event),name,args)
+
+    def launch_worker(self,tools,name,args):
+        self.waiting_tools=tools
+        self.worker=ToolWorker(tools,name,args,self)
         self.worker.result.connect(self.worker_result);self.worker.finished.connect(self.worker_finished)
         self.worker.start()
 
@@ -153,8 +165,29 @@ class Agent(QObject):
         result=getattr(self,'pending_result',None) or {'ok':False,'error':'A execução terminou sem confirmar o resultado.'}
         self.pending_result=None
         call=self.state['pending'][0]
+        if 'approval' in result and not self.cancel_event.is_set():
+            self.state['approval']=result['approval'];self.state['status']='approval'
+            self.history.finish_call(self.identifier,call['id'],{'ok':False,'error':'A aguardar confirmação.'},status='approval')
+            for action in self.state['actions']:
+                if action['id']==call['id']:action['status']='approval'
+            self.persist();return
         self.history.finish_call(self.identifier,call['id'],result)
         self.consume_tool(result)
+
+    def decide(self,token,allow):
+        if not self.state or self.state['status']!='approval' or self.worker:return
+        approval=self.state.get('approval')
+        if not approval or approval['token']!=token:return
+        self.waiting_tools.gate.decide(token,allow)
+        self.state.pop('approval',None);call=self.state['pending'][0]
+        if not allow:
+            result={'ok':False,'error':'O utilizador recusou esta operação. Não voltar a propô-la nesta tarefa.'}
+            self.history.finish_call(self.identifier,call['id'],result,status='denied')
+            self.state['status']='tool';self.consume_tool(result);return
+        # Preparation runs again. A changed target/version/plan needs a new approval.
+        self.history.finish_call(self.identifier,call['id'],{'ok':False,'error':'Resultado incerto até confirmação da execução.'},status='running')
+        self.state['status']='tool';self.persist()
+        self.launch_worker(self.waiting_tools,call['function']['name'],json.loads(call['function']['arguments']))
 
     def consume_tool(self,result):
         call=self.state['pending'].pop(0)
@@ -175,6 +208,9 @@ class Agent(QObject):
     def cancel(self):
         if not self.state:return
         self.cancel_event.set()
+        waiting=getattr(self,'waiting_tools',None)
+        if waiting and getattr(waiting,'gate',None):waiting.gate.clear()
+        self.state.pop('approval',None)
         if self.stream.reply:self.stream.cancel()
         elif not self.worker:self.settle_pending();self.finish('interrupted')
 

@@ -10,10 +10,10 @@ DEFAULTS = {
  'routing':'balanced', 'providers':[], 'provider_mode':'preferred', 'ignored_providers':[], 'allow_fallbacks':True,
  'simple_tokens':1024, 'tool_tokens':4096, 'thinking_tokens':4096,
  'system_prompt':'Responde em português europeu, de forma breve e clara. Explicita unidades, pressupostos e incertezas. Só afirma ter efetuado uma ação quando a ferramenta confirmar o resultado.',
- 'include_time':True, 'temperature':None, 'top_p':None, 'max_rounds':16, 'max_searches':3,
+ 'include_time':True, 'temperature':None, 'top_p':None, 'max_rounds':16, 'max_searches':3, 'max_fetches':6,
  'language':'pt-PT', 'conciseness':'brief',
  'allowed_folders':[], 'tools_enabled':False, 'web_enabled':False,
- 'protected_folders':[], 'allowed_removable':[], 'disabled_tools':[],
+ 'protected_folders':[], 'allowed_removable':[], 'allowed_devices':[], 'disabled_tools':[],
  'search_engine':'parallel', 'search_mode':'auto', 'search_results':5,
  'allowed_domains':[], 'excluded_domains':[], 'browser_enabled':False,
  'width':800, 'height':560, 'shortcut':'F12', 'hotspot_enabled':True,
@@ -27,7 +27,7 @@ def validate(value):
         raise ValueError('Unknown settings')
     result = copy.deepcopy(DEFAULTS); result.update(value)
     ranges={'simple_tokens':(64,131072),'tool_tokens':(128,131072),'thinking_tokens':(128,131072),
-            'max_rounds':(1,100),'max_searches':(0,30),'width':(420,1600),'height':(300,1200),
+            'max_rounds':(1,100),'max_searches':(0,30),'max_fetches':(0,30),'width':(420,1600),'height':(300,1200),
             'hotspot_width':(16,512),'hotspot_delay':(150,3000),'backup_days':(1,365),
             'backup_bytes':(1024**2,1024**4),'browser_idle_seconds':(15,3600),'search_results':(1,10)}
     for key,(minimum,maximum) in ranges.items():
@@ -36,7 +36,7 @@ def validate(value):
         if type(result[key])is not bool:raise ValueError('Invalid '+key)
     for key in ('input_price','output_price'):
         if type(result[key]) not in (int,float) or not 0 <= result[key] < 1e6: raise ValueError('Invalid '+key)
-    for key in ('allowed_folders','protected_folders','allowed_removable','providers','ignored_providers','allowed_domains','excluded_domains','disabled_tools'):
+    for key in ('allowed_folders','protected_folders','allowed_removable','allowed_devices','providers','ignored_providers','allowed_domains','excluded_domains','disabled_tools'):
         if not isinstance(result[key],list) or len(result[key])>100 or any(not isinstance(p,str) or not p or len(p)>4096 or '\x00' in p for p in result[key]):
             raise ValueError('Invalid '+key)
     for key in ('allowed_folders','protected_folders','allowed_removable'):

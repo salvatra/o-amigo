@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import threading
 from urllib.parse import urlsplit
 from PyQt6.QtCore import QObject,QTimer,QUrl,QMetaType,pyqtProperty,pyqtSignal,pyqtSlot
 from PyQt6.QtGui import QGuiApplication,QDesktopServices
@@ -19,6 +20,8 @@ from .tools import Tools,schemas
 from .transactions import Transactions
 from .settings import validate
 from .integration import set_shortcut
+from .browser import Browser
+from .approval import ApprovalGate
 
 def display_markdown(text):
     # Keep user/model Markdown passive: no images, HTML elements or file resources.
@@ -37,6 +40,7 @@ class Controller(QObject):
     visibilityChanged=pyqtSignal(bool)
     placementRequested=pyqtSignal(int,int,int,int)
     historyReady=pyqtSignal(str,bool)
+    browserNotice=pyqtSignal(str)
 
     def __init__(self,settings,data_root,demo=False):
         super().__init__();self.settings=settings;self.data_root=Path(data_root);self.history=History(data_root)
@@ -44,6 +48,9 @@ class Controller(QObject):
         self.notice='';self.visible=False;self.pinned=settings.value['pinned'];self.draft='';self.rows=[]
         self.vault=Vault(self,('application','o-amigo','provider','openrouter'),label='O Amigo — OpenRouter')
         self.test_stream=Stream(self);self.test_stream.finished.connect(self.key_test_finished)
+        self.browser=Browser(self.data_root/'browser',settings.value['browser_idle_seconds'])
+        self.browserNotice.connect(self.show_notice)
+        self.approval_gate=ApprovalGate()
         self.reset_policy()
         self.agent=Agent(self.history,self.settings,self.make_tools,lambda:self._key,self)
         self.agent.changed.connect(self.changed);self.agent.finished.connect(self.completed)
@@ -62,7 +69,9 @@ class Controller(QObject):
     def make_tools(self,cancel):
         settings=self.settings.value
         disabled=settings['disabled_tools'] if settings['tools_enabled'] else [s['function']['name'] for s in schemas()]
-        return Tools(self.policy,self.transactions,cancel,disabled)
+        return Tools(self.policy,self.transactions,cancel,disabled,self.browser if settings['browser_enabled'] else None,self.approval_gate,settings['allowed_devices'])
+
+    def show_notice(self,text):self.notice=text;self.changed.emit()
 
     def reload(self):
         rows=self.history.db.execute('SELECT * FROM messages WHERE conversation=? ORDER BY id DESC LIMIT 100',(self.conversation,)).fetchall()
@@ -78,8 +87,9 @@ class Controller(QObject):
             if task and row['id']==task['message_id']:content=task['text']+self.agent.round_text;status=task['status']
             rows.append({'id':row['id'],'role':row['role'],'content':display_markdown(content),'raw':content,'status':status})
         return json.dumps({'ready':self.validated,'keyBusy':self.key_busy,'busy':self.agent.busy,'notice':self.notice,
-                           'conversation':self.conversation,'draft':self.draft,'messages':rows,'pinned':self.pinned,
+                           'conversation':self.conversation,'draft':self.draft,'messages':rows,'pinned':self.pinned,'browserEnabled':self.settings.value['browser_enabled'],
                            'task':{k:task.get(k) for k in ('status','error','rounds','searches','known_cost','unknown_cost_rounds','sources','providers','elapsed')} if task else None,
+                           'approval':task.get('approval') if task else None,
                            'actions':[{'name':a['name'],'status':a['status'],
                                        'details':json.dumps({k:(v[:200]+'…' if isinstance(v,str) and len(v)>200 else v) for k,v in a['arguments'].items()},ensure_ascii=False,indent=2),
                                        'result':json.dumps(a.get('result',{}),ensure_ascii=False,indent=2)[:2000]} for a in task.get('actions',[])] if task else []},ensure_ascii=False)
@@ -147,6 +157,9 @@ class Controller(QObject):
         self.draft=text
         self.history.set_setting('draft:'+self.conversation,text[:131072])
 
+    @pyqtSlot(str,bool)
+    def decide(self,token,allow):self.agent.decide(token,allow)
+
     @pyqtSlot()
     def newConversation(self):
         if self.agent.busy:self.notice='Termina ou interrompe a tarefa em curso antes de iniciar outra.';self.changed.emit();return
@@ -182,6 +195,13 @@ class Controller(QObject):
     @pyqtSlot()
     def openSettings(self):self.settingsRequested.emit()
     @pyqtSlot()
+    def showBrowser(self):
+        if not self.settings.value['browser_enabled']:return
+        def show():
+            try:self.browser.request('show')
+            except (RuntimeError,OSError,ValueError):self.browserNotice.emit('Não foi possível abrir o browser isolado.')
+        threading.Thread(target=show,daemon=True).start()
+    @pyqtSlot()
     def hide(self):self.hideRequested.emit()
     @pyqtSlot(bool)
     def setVisible(self,visible):self.visible=visible;self.visibilityChanged.emit(visible)
@@ -197,6 +217,8 @@ class Controller(QObject):
             value=validate(json.loads(text))
             if value['shortcut']!=self.settings.value['shortcut'] and not self.demo:set_shortcut(value['shortcut'])
             self.settings.save(value);self.reset_policy();self.pinned=self.settings.value['pinned']
+            self.browser.idle_seconds=value['browser_idle_seconds']
+            if not value['browser_enabled']:self.browser.close()
             self.settingsChanged.emit();self.changed.emit();return 'Definições guardadas.'
         except ValueError as error:return str(error)
         except OSError:return 'Não foi possível guardar a configuração.'
@@ -231,4 +253,4 @@ class Controller(QObject):
                                   'A tarefa terminou.' if self.agent.state['status']=='complete' else 'Há uma tarefa à espera de atenção.',
                                   array([],QMetaType.Type.QString),{},5000])
             QDBusConnection.sessionBus().asyncCall(message)
-    def close(self):self.transactions.close();self.history.close();self._key=''
+    def close(self):self.browser.close();self.transactions.close();self.history.close();self._key=''

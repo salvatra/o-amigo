@@ -82,4 +82,6 @@ class Stream(QObject):
         details=self.assembly.usage.get('server_tool_use_details') or {}
         count=details.get('web_search_requests')
         if type(count)is int and count>=0:metadata['searches']=count
+        fetches=details.get('web_fetch_requests')
+        if type(fetches)is int and fetches>=0:metadata['fetches']=fetches
         self.changed.emit(self.assembly.text);reply.deleteLater();self.finished.emit(*self.result,message,metadata)

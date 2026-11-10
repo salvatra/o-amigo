@@ -65,6 +65,8 @@ class Service(QObject):
     def NewConversation(self):self.controller.newConversation()
     @pyqtSlot()
     def Cancel(self):self.controller.cancel()
+    @pyqtSlot(str,bool)
+    def Decide(self,token,allow):self.controller.decide(token,allow)
     @pyqtSlot()
     def Continue(self):self.controller.resume()
     @pyqtSlot(str,int,result=str)
@@ -79,6 +81,8 @@ class Service(QObject):
     def SetPinned(self,value):self.controller.setPinned(value)
     @pyqtSlot(str)
     def Copy(self,text):self.controller.copy(text)
+    @pyqtSlot()
+    def Browser(self):self.controller.showBrowser()
     @pyqtSlot(result=str)
     def IntegrationSettings(self):
         return json.dumps({k:self.controller.settings.value[k] for k in ('shortcut','hotspot_enabled','hotspot_width','hotspot_delay')})

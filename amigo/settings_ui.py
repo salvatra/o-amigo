@@ -17,6 +17,7 @@ CATEGORIES=[
  ('conciseness','Estilo','choice',['brief','balanced','detailed']),('include_time','Incluir data e hora de Lisboa','boolean')]),
  ('Ferramentas e permissões',[
  ('tools_enabled','Ativar ferramentas locais','boolean'),('allowed_folders','Pastas autorizadas, caminhos absolutos','list'),
+ ('allowed_devices','Unidades selecionadas, identificadores mostrados por usb_list','list'),
  ('allowed_removable','Unidades removíveis selecionadas, pontos de montagem','list'),('protected_folders','Exclusões adicionais','list'),
  ('disabled_tools','Ferramentas desativadas, identificadores do catálogo','list'),
  ('backup_days','Retenção da recuperação, dias','integer'),('backup_bytes','Limite de recuperação, bytes','integer')]),
@@ -24,6 +25,7 @@ CATEGORIES=[
  ('web_enabled','Permitir pesquisa pelo OpenRouter','boolean'),('search_engine','Motor de pesquisa','choice',['parallel','exa','perplexity','firecrawl']),
  ('search_mode','Modo (auto: Fast técnico inglês / Basic restante)','choice',['auto','fast','basic','advanced','turbo','instant','deep-lite','deep','deep-reasoning']),
  ('search_results','Resultados por pesquisa','integer'),('max_searches','Pesquisas por etapa da tarefa','integer'),
+ ('max_fetches','Extrações de páginas por etapa da tarefa','integer'),
  ('allowed_domains','Pesquisar apenas nestes domínios','list'),('excluded_domains','Excluir estes domínios (alternativa à lista anterior)','list'),
  ('browser_enabled','Permitir browser isolado','boolean'),('browser_idle_seconds','Fechar browser escondido após inatividade, segundos','integer')]),
  ('Interface',[

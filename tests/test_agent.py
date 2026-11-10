@@ -9,6 +9,7 @@ from amigo.agent import Agent
 from amigo.history import History
 from amigo.settings import Settings
 from amigo.protocol import request,Assembly
+from amigo.approval import ApprovalGate,ApprovalRequired
 
 APP=QCoreApplication.instance() or QCoreApplication([])
 
@@ -80,7 +81,7 @@ class AgentTests(unittest.TestCase):
         agent=self.agent([response({'role':'assistant','content':None,'tool_calls':[call('one',path='/note',text='one')]},searches=2),
                           response({'role':'assistant','content':'Done'},searches=1)])
         agent.start(self.conversation,'pesquisa');wait_for(lambda:agent.state['status']=='complete')
-        budgets=[b['tools'][-1]['parameters']['max_uses'] for b in self.stream.bodies]
+        budgets=[next(t['parameters']['max_uses'] for t in b['tools'] if t['type']=='openrouter:web_search') for b in self.stream.bodies]
         self.assertEqual(budgets,[3,1]);self.assertEqual(agent.state['searches'],3)
     def test_missing_search_usage_never_refunds(self):
         self.settings.value['web_enabled']=True
@@ -89,6 +90,36 @@ class AgentTests(unittest.TestCase):
         agent.start(self.conversation,'pesquisa');wait_for(lambda:agent.state['status']=='complete')
         self.assertFalse(any(t['type']=='openrouter:web_search' for t in self.stream.bodies[1]['tools']))
         self.assertEqual(agent.state['unknown_cost_rounds'],1)
+    def test_approval_is_required_and_exactly_once(self):
+        gate=ApprovalGate();executed=[]
+        class GuardedTools:
+            def __init__(self):self.gate=gate
+            def call(self,name,args):
+                self.gate.require({'operation':'install','packages':['example;1.0;x86_64;extra']})
+                executed.append(args);return {'verified':True}
+        self.tools=GuardedTools()
+        agent=self.agent([response({'role':'assistant','content':None,'tool_calls':[call('one','package_install',names=['example'])]}),response({'role':'assistant','content':'Done'})])
+        agent.start(self.conversation,'install');wait_for(lambda:agent.state['status']=='approval')
+        self.assertTrue(agent.busy);self.assertEqual(executed,[])
+        token=agent.state['approval']['token'];agent.decide('wrong-token',True);self.assertEqual(executed,[])
+        agent.decide(token,True);wait_for(lambda:agent.state['status']=='complete');self.assertEqual(len(executed),1)
+        with self.assertRaises(ApprovalRequired):gate.require({'operation':'install','packages':['example;1.0;x86_64;extra']})
+
+    def test_changed_plan_requires_new_approval_and_denial_does_not_execute(self):
+        gate=ApprovalGate();plans=[1,2];executed=[]
+        class GuardedTools:
+            def __init__(self):self.gate=gate
+            def call(self,name,args):
+                self.gate.require({'version':plans[0]});executed.append(True)
+        self.tools=GuardedTools()
+        agent=self.agent([response({'role':'assistant','content':None,'tool_calls':[call('one','package_install',names=['example'])]}),response({'role':'assistant','content':'Cancelled'})])
+        agent.start(self.conversation,'install');wait_for(lambda:agent.state['status']=='approval')
+        first=agent.state['approval']['token'];plans.pop(0);agent.decide(first,True)
+        wait_for(lambda:agent.state['status']=='approval' and agent.state['approval']['token']!=first)
+        self.assertEqual(executed,[]);agent.decide(agent.state['approval']['token'],False)
+        wait_for(lambda:agent.state['status']=='complete');self.assertEqual(executed,[])
+        self.assertEqual(self.history.call(agent.identifier,'one')['status'],'denied')
+
     def test_restart_marks_calls_uncertain(self):
         task=self.history.save_task(self.conversation,{'status':'tool'})
         self.history.begin_call(task,'one','write_file',{'path':'/note','text':'x'})

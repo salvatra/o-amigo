@@ -9,6 +9,7 @@ class Denied(ValueError):
 class Policy:
     def __init__(self, roots, protected=()):
         self.roots = tuple(Path(p).absolute().resolve() for p in roots)
+        self.static_roots=self.roots
         home = Path.home()
         self.protected = tuple(Path(p).absolute().resolve() for p in [
             home/'.config', home/'.local', home/'.cache', home/'.var', home/'.ssh', home/'.gnupg', home/'.codex',

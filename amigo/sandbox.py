@@ -7,7 +7,7 @@ from pathlib import Path
 from .policy import Denied
 from .transactions import Cancelled
 
-COMMANDS = {'man': '/usr/bin/man', 'pdf_info': '/usr/bin/pdfinfo',
+COMMANDS = {'uname':'/usr/bin/uname', 'lsusb':'/usr/bin/lsusb', 'man': '/usr/bin/man', 'pdf_info': '/usr/bin/pdfinfo',
             'pdf_text': '/usr/bin/pdftotext', 'pdf_pages': '/usr/bin/qpdf', 'archive':'/usr/bin/python'}
 
 class Sandbox:
@@ -27,6 +27,8 @@ class Sandbox:
             argv += ['--ro-bind', str(Path(path).resolve()), f'/input/{index}']
         if output:
             argv += ['--bind', str(Path(output).resolve()), '/output']
+        if command == 'lsusb':
+            argv += ['--ro-bind','/sys/bus/usb','/sys/bus/usb','--ro-bind','/sys/devices','/sys/devices']
         if command == 'man':
             argv += ['--dir', '/etc', '--ro-bind', '/etc/man_db.conf', '/etc/man_db.conf']
         if command == 'archive':

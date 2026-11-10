@@ -46,6 +46,7 @@ Item {
         RowLayout {
             visible: view.state.ready
             Kirigami.Heading { text: "O Amigo"; level: 2; Layout.fillWidth: true }
+            PC.ToolButton { visible: !!view.state.browserEnabled; icon.name: "internet-web-browser"; text: "Ver browser"; display: QQC2.AbstractButton.IconOnly; onClicked: bridge.showBrowser(); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "document-new"; text: "Nova conversa"; display: QQC2.AbstractButton.IconOnly; enabled: !view.state.busy; onClicked: { bridge.newConversation(); view.focusComposer(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "view-history"; text: "Histórico"; display: QQC2.AbstractButton.IconOnly; enabled: !view.state.busy; checked: view.historyOpen; checkable: true; onClicked: { view.historyOpen = !view.historyOpen; if (view.historyOpen) view.refreshHistory(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "window-pin"; text: "Fixar popup"; display: QQC2.AbstractButton.IconOnly; checkable: true; checked: view.state.pinned; onClicked: bridge.setPinned(checked); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
@@ -119,6 +120,19 @@ Item {
                     PC.Button { visible: view.state.busy; text: "Interromper"; icon.name: "process-stop"; onClicked: bridge.cancel() }
                     PC.Button { visible: !view.state.busy; text: "Enviar"; icon.name: "mail-send"; enabled: prompt.text.trim().length > 0; onClicked: { draftTimer.stop(); bridge.send(prompt.text, think.checked); prompt.text = ""; view.focusComposer(); } }
                 }
+                ColumnLayout {
+                    visible: !!view.state.approval
+                    Layout.fillWidth: true
+                    PC.Label { text: "Confirmar operação"; font.bold: true }
+                    PC.ScrollView {
+                        Layout.fillWidth: true; Layout.preferredHeight: 130
+                        PC.TextArea { text: view.state.approval ? JSON.stringify(view.state.approval.plan, null, 2) : ""; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText }
+                    }
+                    RowLayout {
+                        PC.Button { text: "Recusar"; onClicked: bridge.decide(view.state.approval.token, false) }
+                        PC.Button { text: "Autorizar esta operação"; icon.name: "dialog-ok"; onClicked: bridge.decide(view.state.approval.token, true) }
+                    }
+                }
                 Kirigami.Separator { Layout.fillWidth: true }
                 PC.ScrollView {
                     id: answers
@@ -149,7 +163,7 @@ Item {
                             ColumnLayout {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                PC.ToolButton { id: actionDetails; checkable: true; text: modelData.name + " · " + (modelData.status === "complete" ? "Concluída" : modelData.status === "failed" ? "Não concluída" : "Em curso"); icon.name: modelData.status === "complete" ? "emblem-success" : modelData.status === "failed" ? "dialog-warning" : "view-refresh" }
+                                PC.ToolButton { id: actionDetails; checkable: true; text: modelData.name + " · " + (modelData.status === "complete" ? "Concluída" : modelData.status === "failed" ? "Não concluída" : modelData.status === "approval" ? "A aguardar confirmação" : "Em curso"); icon.name: modelData.status === "complete" ? "emblem-success" : modelData.status === "failed" ? "dialog-warning" : "view-refresh" }
                                 PC.TextArea { visible: actionDetails.checked; text: modelData.details + "\n" + modelData.result; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText; background: null; Layout.fillWidth: true }
                             }
                         }

@@ -23,7 +23,8 @@ class History(Store):
         self.db.execute("UPDATE tool_calls SET status='uncertain' WHERE status='running'")
         for row in self.db.execute('SELECT id,state FROM tasks').fetchall():
             state=json.loads(row['state'])
-            if state.get('status') in ('running','tool','requesting'):
+            if state.get('status') in ('running','tool','requesting','approval'):
+                state.pop('approval',None)
                 state['status']='interrupted';state['error']='A aplicação foi interrompida. As operações não foram repetidas.'
                 self.db.execute('UPDATE tasks SET state=? WHERE id=?',(json.dumps(state),row['id']))
         self.db.commit()

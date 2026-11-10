@@ -17,6 +17,7 @@ Item {
     function send(text, thinking) { call("Send",[text,thinking]); }
     function newConversation() { call("NewConversation"); }
     function cancel() { call("Cancel"); }
+    function decide(token, allow) { call("Decide",[token,allow]); }
     function resume() { call("Continue"); }
     function setDraft(text) { call("SetDraft",[text]); }
     function setPinned(value) { call("SetPinned",[value]); }
@@ -24,6 +25,7 @@ Item {
     function deleteConversation(id) { call("DeleteConversation",[id]); }
     function copy(text) { call("Copy",[text]); }
     function openSettings() { call("Settings"); }
+    function showBrowser() { call("Browser"); }
     function openUrl(url) { if (/^https?:\/\//i.test(url)) Qt.openUrlExternally(url); }
     function requestHistory(query, offset) { call("History",[query,new DBus.int32(offset)],value => historyReady(value,offset>0)); }
     function saveKey(ignored) { openSettings(); }
