@@ -11,10 +11,11 @@ class Policy:
         self.roots = tuple(Path(p).absolute().resolve() for p in roots)
         home = Path.home()
         self.protected = tuple(Path(p).absolute().resolve() for p in [
-            home/'.config', home/'.local', home/'.ssh', home/'.gnupg', home/'.codex',
+            home/'.config', home/'.local', home/'.cache', home/'.var', home/'.ssh', home/'.gnupg', home/'.codex',
+            home/'.docker', home/'.steam', home/'.git-credentials', home/'.gitconfig',
             home/'.mozilla', home/'.pki', home/'.aws', home/'.azure', home/'.kube',
             home/'.password-store', home/'.bashrc', home/'.zshrc', home/'.zshenv',
-            home/'.profile', home/'.bash_profile', home/'.netrc', home/'.npmrc',
+            home/'.profile', home/'.bash_profile', home/'.zlogin', home/'.zlogout', home/'.netrc', home/'.npmrc',
             Path(__file__).resolve().parents[1], *protected])
 
     def path(self, value, *, exists=True):
@@ -46,7 +47,11 @@ class Policy:
             for component in path.parts[1:-1]:
                 nxt = os.open(component, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
                 os.close(fd); fd = nxt
-            result = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+            flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+            try:
+                result = os.open(path.name, flags | os.O_NOATIME, dir_fd=fd)
+            except PermissionError:
+                result = os.open(path.name, flags, dir_fd=fd)
             mode = os.fstat(result)
             if not stat.S_ISREG(mode.st_mode) or mode.st_nlink > 1:
                 os.close(result)
