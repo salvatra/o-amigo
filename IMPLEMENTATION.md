@@ -17,16 +17,18 @@ has been delivered.
 - PDF page selection/reordering/merging/splitting in Bubblewrap, with output verification.
 - ZIP/TAR inspection/extraction and ZIP creation, with traversal/link/size checks.
 - Obsidian note/attachment moves updating native wiki, Markdown and Canvas references in a recoverable batch.
-- 38 automated tests, including real sandboxed PDF/archive execution and adversarial fixtures.
+- Durable sequential agent loop, cancellation, continuation budgets and mutation deduplication.
+- Batched QtNetwork streaming, tool/context persistence, citations and actual-cost accounting.
+- OpenRouter server search with per-request caps and conservative task-wide usage accounting.
+- 52 automated tests; a real bounded OpenRouter search also passed (see VALIDATION.md).
 
 ## Required before migration or release
 
 - Production service, D-Bus lifecycle, F12 and top-center activation.
 - Full settings pages, history UI and shared optional widget frontend.
-- Tool-call streaming, durable agent loop and round/search budgets.
 - Recovery interface and broader concurrent-change/cancellation coverage.
 - Device, CUPS and approved package-install adapters.
-- OpenRouter search and isolated browser with controlled network proxy.
+- Isolated browser with controlled network proxy.
 - Broader adversarial tests, cancellation and crash recovery tests.
 - Live theme/focus/performance verification and settings-window integration.
 - Packaging, migration, uninstall/rollback and actual dependency installation.

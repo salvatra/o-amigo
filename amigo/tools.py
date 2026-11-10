@@ -50,14 +50,16 @@ def schemas():
             for name,description,props,required in SPECS]
 
 class Tools:
-    def __init__(self, policy, transactions=None, cancel=None):
+    def __init__(self, policy, transactions=None, cancel=None, disabled=()):
         self.policy = policy
         self.sandbox = Sandbox()
         self.files = Files(policy,transactions,cancel) if transactions else None
         self.documents = Documents(self.files,self.sandbox) if self.files else None
         self.cancel=cancel
+        self.disabled=frozenset(disabled)
 
     def call(self, name, args):
+        if name in self.disabled:raise Denied('Capability disabled in settings')
         spec = next((s for s in SPECS if s[0] == name), None)
         if not spec or not isinstance(args, dict):
             raise Denied('Unknown tool')

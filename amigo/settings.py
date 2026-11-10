@@ -3,32 +3,53 @@ import copy
 import json
 import os
 import tempfile
+import math
 
 DEFAULTS = {
  'model': 'deepseek/deepseek-v4.1-flash-1017', 'input_price':0.30, 'output_price':1.20,
- 'routing':'balanced', 'providers':[], 'allow_fallbacks':True,
+ 'routing':'balanced', 'providers':[], 'provider_mode':'preferred', 'ignored_providers':[], 'allow_fallbacks':True,
  'simple_tokens':1024, 'tool_tokens':4096, 'thinking_tokens':4096,
  'system_prompt':'Responde em português europeu, de forma breve e clara. Explicita unidades, pressupostos e incertezas. Só afirma ter efetuado uma ação quando a ferramenta confirmar o resultado.',
- 'include_time':True, 'temperature':None, 'max_rounds':16, 'max_searches':3,
+ 'include_time':True, 'temperature':None, 'top_p':None, 'max_rounds':16, 'max_searches':3,
+ 'language':'pt-PT', 'conciseness':'brief',
  'allowed_folders':[], 'tools_enabled':False, 'web_enabled':False,
- 'search_engine':'parallel', 'search_mode':'basic', 'search_results':5,
+ 'protected_folders':[], 'allowed_removable':[], 'disabled_tools':[],
+ 'search_engine':'parallel', 'search_mode':'auto', 'search_results':5,
+ 'allowed_domains':[], 'excluded_domains':[], 'browser_enabled':False,
  'width':800, 'height':560, 'shortcut':'F12', 'hotspot_enabled':True,
  'hotspot_width':96, 'hotspot_delay':300, 'pinned':False,
  'backup_days':7, 'backup_bytes':2147483648, 'browser_idle_seconds':90,
+ 'animations':True, 'notifications':True,
 }
 
 def validate(value):
     if not isinstance(value,dict) or set(value)-set(DEFAULTS):
         raise ValueError('Unknown settings')
     result = copy.deepcopy(DEFAULTS); result.update(value)
-    for key in ('simple_tokens','tool_tokens','thinking_tokens','max_rounds','max_searches',
-                'width','height','hotspot_width','hotspot_delay','backup_days','backup_bytes','browser_idle_seconds','search_results'):
-        if type(result[key]) is not int or result[key]<1: raise ValueError('Invalid '+key)
+    ranges={'simple_tokens':(64,131072),'tool_tokens':(128,131072),'thinking_tokens':(128,131072),
+            'max_rounds':(1,100),'max_searches':(0,30),'width':(420,1600),'height':(300,1200),
+            'hotspot_width':(16,512),'hotspot_delay':(150,3000),'backup_days':(1,365),
+            'backup_bytes':(1024**2,1024**4),'browser_idle_seconds':(15,3600),'search_results':(1,10)}
+    for key,(minimum,maximum) in ranges.items():
+        if type(result[key]) is not int or not minimum<=result[key]<=maximum:raise ValueError('Invalid '+key)
+    for key in ('allow_fallbacks','include_time','tools_enabled','web_enabled','browser_enabled','hotspot_enabled','pinned','animations','notifications'):
+        if type(result[key])is not bool:raise ValueError('Invalid '+key)
     for key in ('input_price','output_price'):
         if type(result[key]) not in (int,float) or not 0 <= result[key] < 1e6: raise ValueError('Invalid '+key)
-    if not isinstance(result['allowed_folders'],list) or any(not isinstance(p,str) or not Path(p).is_absolute() for p in result['allowed_folders']):
-        raise ValueError('Authorized folders must be absolute paths')
+    for key in ('allowed_folders','protected_folders','allowed_removable','providers','ignored_providers','allowed_domains','excluded_domains','disabled_tools'):
+        if not isinstance(result[key],list) or len(result[key])>100 or any(not isinstance(p,str) or not p or len(p)>4096 or '\x00' in p for p in result[key]):
+            raise ValueError('Invalid '+key)
+    for key in ('allowed_folders','protected_folders','allowed_removable'):
+        if any(not Path(p).is_absolute() for p in result[key]):raise ValueError('Folders must be absolute paths')
+    if result['allowed_domains'] and result['excluded_domains']:raise ValueError('Choose either allowed or excluded domains')
     if result['routing'] not in ('balanced','price','throughput','latency'): raise ValueError('Invalid routing')
+    if result['provider_mode'] not in ('preferred','only'):raise ValueError('Invalid provider mode')
+    if result['search_engine'] not in ('parallel','exa','perplexity','firecrawl'):raise ValueError('Use an engine that enforces server search limits')
+    if result['search_mode'] not in ('auto','fast','basic','advanced','turbo','instant','deep-lite','deep','deep-reasoning'):raise ValueError('Invalid search mode')
+    for key,maximum in (('temperature',2),('top_p',1)):
+        if result[key] is not None and (type(result[key])not in(int,float) or not math.isfinite(result[key]) or not 0<=result[key]<=maximum):raise ValueError('Invalid '+key)
+    for key in ('system_prompt','shortcut','language','conciseness'):
+        if not isinstance(result[key],str) or '\x00' in result[key] or len(result[key])>32768:raise ValueError('Invalid '+key)
     if not isinstance(result['model'],str) or not result['model'].strip(): raise ValueError('Missing model')
     return result
 
