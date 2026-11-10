@@ -14,6 +14,7 @@ sys.path.insert(0,'/app')
 from amigo.web_policy import browsing_url
 from amigo.web_proxy import relay
 from PyQt6.QtCore import QCoreApplication,QSocketNotifier,QTimer,QUrl,Qt
+from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication,QMainWindow,QToolBar,QLabel,QPushButton
 from PyQt6.QtWebEngineCore import QWebEnginePage,QWebEngineProfile,QWebEngineSettings,QWebEngineUrlRequestInterceptor,QWebEngineScript
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -68,6 +69,7 @@ class Browser:
         self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
         self.interceptor=Interceptor(self.profile);self.profile.setUrlRequestInterceptor(self.interceptor)
         self.page=Page(self.profile,self.view);self.view.setPage(self.page)
+        self.page.setBackgroundColor(app.palette().color(QPalette.ColorRole.Base))
         for setting in (QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls,QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls,
                         QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard,QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows,
                         QWebEngineSettings.WebAttribute.AllowRunningInsecureContent):self.page.settings().setAttribute(setting,False)

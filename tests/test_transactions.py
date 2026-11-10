@@ -1,4 +1,6 @@
 import os
+import errno
+import hashlib
 import tempfile
 import threading
 import unittest
@@ -72,9 +74,9 @@ class TransactionsTests(unittest.TestCase):
         a=self.data/'a';b=self.data/'b';a.write_text('old A');b.write_text('old B')
         staged=self.base/'staged';staged.write_text('new')
         original=self.tx.atomic
-        def injected(path,source,expected,mode=0o600,times=None):
-            if path==b and source==staged:raise OSError('simulated full disk')
-            return original(path,source,expected,mode,times)
+        def injected(path,source,expected,mode=0o600,times=None,cancel=None):
+            if path==b and source==staged:raise OSError(errno.ENOSPC,'simulated full disk')
+            return original(path,source,expected,mode,times,cancel=cancel)
         with patch.object(self.tx,'atomic',side_effect=injected):
             with self.assertRaises(OSError):
                 self.tx.apply([{'path':a,'staged':staged},{'path':b,'staged':staged}])
@@ -95,3 +97,36 @@ class TransactionsTests(unittest.TestCase):
         with self.assertRaises(RecoveryUnavailable):
             self.tx.apply([{'path':a,'staged':staged},{'path':b,'staged':staged}])
         self.assertEqual(a.read_text(),'1234');self.assertEqual(b.read_text(),'5678')
+
+    def test_large_copy_and_explicit_free_space_check(self):
+        from unittest.mock import patch
+        from collections import namedtuple
+        source=self.data/'large';target=self.data/'copy';block=bytes(range(256))*4096
+        with source.open('wb') as file:
+            for _ in range(64):file.write(block)
+        result=self.files.copy(str(source),str(target))
+        self.assertEqual(result['bytes'],64*1024**2)
+        with target.open('rb') as file:self.assertEqual(hashlib.file_digest(file,'sha256').hexdigest(),result['sha256'])
+        self.tx.undo(result['operation_id']);self.assertFalse(target.exists())
+        usage=namedtuple('Usage','total used free')(100,100,0)
+        with patch('amigo.files.shutil.disk_usage',return_value=usage):
+            with self.assertRaises(OSError) as error:self.files.copy(str(source),str(target))
+        self.assertEqual(error.exception.errno,errno.ENOSPC);self.assertFalse(target.exists())
+
+    def test_cancel_during_atomic_staging_preserves_original(self):
+        from unittest.mock import patch
+        original=self.data/'original';original.write_text('keep')
+        staged=self.base/'staged';staged.write_bytes(b'x'*(4*1024**2));event=threading.Event()
+        real_open=Path.open
+        class CancellingFile:
+            def __init__(self,file):self.file=file
+            def __enter__(self):return self
+            def __exit__(self,*args):self.file.close()
+            def read(self,size):event.set();return self.file.read(size)
+        def opened(path,*args,**kwargs):
+            file=real_open(path,*args,**kwargs)
+            return CancellingFile(file) if path==staged else file
+        expected=self.tx.current(original)
+        with patch.object(Path,'open',opened):
+            with self.assertRaises(Cancelled):self.tx.atomic(original,staged,expected,cancel=event)
+        self.assertEqual(original.read_text(),'keep');self.assertEqual(list(self.data.glob('.o-amigo-*')),[])

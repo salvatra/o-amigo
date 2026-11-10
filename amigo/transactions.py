@@ -114,7 +114,7 @@ class Transactions:
         current=self.current(path)
         return (current or {}).get('sha256')==(expected or {}).get('sha256') and bool(current)==bool(expected)
 
-    def atomic(self,path,staged,expected,mode=0o600,times=None):
+    def atomic(self,path,staged,expected,mode=0o600,times=None,cancel=None):
         if not self.same(path,expected):raise Conflict('Destination changed concurrently: '+str(path))
         with self.parent(path) as fd:
             if times:
@@ -130,8 +130,11 @@ class Transactions:
                 out=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=fd)
                 try:
                     with os.fdopen(out,'wb') as target,Path(staged).open('rb') as source:
-                        shutil.copyfileobj(source,target,1024*1024)
+                        while chunk:=source.read(1024*1024):
+                            if cancel and cancel.is_set():raise Cancelled('Operation cancelled before commit')
+                            target.write(chunk)
                         os.fchmod(target.fileno(),mode);target.flush();os.fsync(target.fileno())
+                    if cancel and cancel.is_set():raise Cancelled('Operation cancelled before commit')
                     if not self.same(path,expected):raise Conflict('Destination changed before commit')
                     if expected is None:
                         # link() is an atomic create-if-absent, unlike replace().
@@ -147,13 +150,14 @@ class Transactions:
 
     def apply(self,changes,cancel=None):
         with self.lock:
+            if cancel and cancel.is_set():raise Cancelled('Operation cancelled')
             identifier,manifest=self.checkpoint(changes)
             applied=[]
             try:
                 for change,entry in zip(changes,manifest):
                     if cancel and cancel.is_set():raise Cancelled('Operation cancelled')
                     path=Path(entry['path']);before=entry['before']
-                    self.atomic(path,change.get('staged'),before,(before or {}).get('mode',0o600),entry['times'])
+                    self.atomic(path,change.get('staged'),before,(before or {}).get('mode',0o600),entry['times'],cancel=cancel)
                     applied.append(entry)
                     if (self.current(path) or {}).get('sha256')!=entry['after']:raise Conflict('Post-write verification failed')
                 self.db.execute("UPDATE operations SET status='committed' WHERE id=?",(identifier,));self.db.commit()
@@ -194,6 +198,7 @@ class Transactions:
             for entry in entries:
                 current=self.current(self.policy.path(entry['path'],exists=False))
                 if (current or {}).get('sha256')!=entry['after']:raise Conflict('A file changed after the operation')
+                if entry.get('times') and current and current['mtime_ns']!=entry['times'][1]:raise Conflict('Timestamp changed since operation')
             for entry in reversed(entries):self.restore_entry(identifier,entry)
             self.db.execute("UPDATE operations SET status='undone' WHERE id=?",(identifier,));self.db.commit()
             return {'operation_id':identifier,'status':'undone'}

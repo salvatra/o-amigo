@@ -28,6 +28,12 @@ jobs:
         run: QT_QUICK_BACKEND=software python tests/verify_ui.py
       - name: Check isolated Chromium interactions
         run: |
+          # This disposable Ubuntu-hosted runner otherwise denies Arch's
+          # unprivileged network namespace setup before the test can start.
+          # Keep Bubblewrap network isolation and Chromium sandboxing enabled.
+          if test -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns; then
+            sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
           useradd -m browsercheck
           runuser -u browsercheck -- python tests/verify_browser_interactions.py
       - name: Scan committed sources for secrets

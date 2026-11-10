@@ -1,6 +1,7 @@
 """Structured file operations through the transactional broker."""
 from datetime import datetime
 from pathlib import Path
+import errno
 import fnmatch
 import hashlib
 import os
@@ -47,6 +48,7 @@ class Files:
             raise Denied('Use the Obsidian adapter to move notes or attachments without breaking links')
         if src==dest:raise Denied('Source and destination are identical')
         if dest.exists():raise Conflict('Destination already exists; choose a different name')
+        if shutil.disk_usage(dest.parent).free<src.stat().st_size:raise OSError(errno.ENOSPC,'Espaço insuficiente no destino; nenhum ficheiro foi alterado.')
         with tempfile.TemporaryDirectory(prefix='o-amigo-copy-') as directory:
             staged=self.stage(src,Path(directory)/'data')
             with staged.open('rb') as file:sha=hashlib.file_digest(file,'sha256').hexdigest()
