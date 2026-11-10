@@ -1,88 +1,101 @@
-# Validation evidence
+# Validation evidence — 0.1.0
 
-Development evidence; this is not a release acceptance report yet.
+Acceptance performed on Arch Linux, Plasma/KWin 6.8.2, Qt 6.12 and Wayland,
+2026-11-10. This separates real checks from service fixtures and hardware limits.
 
-## 2026-11-10
+## Automated and isolated checks
 
-- 83 automated tests pass (`python -m unittest discover -s tests`).
-- Real Bubblewrap runs: qpdf page reordering/splitting/checking, Poppler text,
-  ZIP round-trip, TAR/ZIP malicious-entry rejection, manual reading.
-- HTTP fixtures: byte-fragmented Portuguese UTF-8, fragmented tool arguments,
-  incomplete streams, cancellation, HTTP 401/402/404/429/503, citations and usage.
-- Durable task tests: sequential tools, no duplicate mutations, restart uncertainty,
-  continuation counters, search reservation, missing usage and paginated history.
-- One real OpenRouter request: exact DeepSeek model, default price ceilings,
-  Parallel Fast with `max_uses: 1`. Provider Wafer, one search, five citations,
-  2.695 seconds, API-reported total cost USD 0.001301652.
-  Credentials were retrieved in memory from Secret Service; no response or key
-  was saved in this repository.
-- Gitleaks scan of source tree passed before publication.
-- Native Qt Quick UI verification passed with Tidal and Breeze at 200% scale:
-  Enter, Shift+Enter, Esc, retained drafts, all settings categories and account form.
-- Temporary KWin script/service test passed through KGlobalAccel: focus, hide,
-  previous-window restoration, current-desktop preservation and centered geometry
-  (304,34,832,592 on a 1440x900 logical screen with a 30px panel).
-  Warm show was 25.63ms in this run; full installed acceptance will repeat it.
-- Hotspot timer tested natively; exact 96px region and multiple output coordinates
-  tested with the actual script under QJSEngine. Physical pointer activation still
-  needs final installation verification.
-- Optional `.plasmoid` package built and installed into a disposable data directory;
-  `plasmawindowed` loaded it without QML errors. Its actual QML D-Bus bridge passed
-  snapshot, pushed updates, send, paginated history and missing-service checks.
+- 85 tests pass: fragmented Portuguese UTF-8/SSE/tool arguments, incomplete streams,
+  cancellation, HTTP 401/402/404/429/503, price caps, exact model and usage handling.
+- Durable sequential tasks: restart uncertainty, no mutation replay, continuation
+  counters, tool/search budgets, missing usage and paginated history.
+- Policy: protected paths, escaping symlinks/hardlinks, special files, option and
+  command injection, schema validation and absence of a model policy-edit tool.
+- Recovery: atomic writes, timestamp restoration, changed-target conflicts,
+  retention/quota, 64 MiB verified copy, injected ENOSPC and cancellation while
+  staging. No original is replaced without a valid recovery checkpoint.
+- Real Bubblewrap workers: qpdf page selection/reordering/splitting/checking,
+  Poppler text, ZIP round trip, malicious TAR/ZIP entries and pager-free manuals.
+- Obsidian fixtures cover wiki, Markdown and Canvas links, recoverable batch moves
+  and refusal of ambiguous references. No personal vault was changed for tests.
+- One-use approvals: refusal, changed plans, expiry after restart and pause/resume.
+- Browser fixtures: navigation, fixed click operations, Portuguese GET search,
+  POST/password form refusal, cancellation and subsequent navigation. A regression
+  test verifies that the browser survives the short-lived thread that starts it.
+- Public gateway rejects private/mixed DNS, local interface addresses, IPv6
+  translation/tunnel routes and file/account URLs; public destination DNS is pinned.
+- Clean install, reinstall, unrelated-setting preservation, uninstall retention,
+  explicit data deletion, history migration, interrupted wallet migration and
+  version rollback run in disposable homes.
+- [GitHub CI](https://github.com/salvatra/o-amigo/actions/runs/42924220056) passed
+  unit tests, real isolated Chromium fixtures, QML load/interaction, secret scanning,
+  widget packaging and compilation in a fresh Arch container. Its disposable Ubuntu
+  host needs a user-namespace policy adjustment; application sandboxing stays on.
 
-The standalone popup uses PlasmaCore.Dialog with a utility-window role. This keeps
-the native Plasma background/blur/slide behavior while allowing KWin to position
-and focus it independently of a panel containment. The AppletPopup role ignored
-absolute positioning in the native standalone test. The optional panel widget
-will use Plasma's own containment popup.
+## Real API and system checks
 
-- Real isolated browser checks pass: HTTPS through the proxy, page read/scroll,
-  verified download delivery, blocked local/file/account URLs, no home/session-bus/
-  key/direct-network access, visible-session retention and hidden-idle termination.
-- Gateway tests reject private/mixed DNS responses and pin public numeric addresses.
-- Native Wayland browser opens independently; its selected UI fonts are copied to
-  an ephemeral profile instead of exposing the personal font/config tree.
-- Approval tests cover refusal, one-use grants, changed plans, restart expiry and
-  agent pause/resume. Package and CUPS tests use disposable service fixtures.
-- Real PackageKit preview resolved a configured-repository package without installing
-  it. Installing the required python-pycups dependency through the adapter then
-  passed normal system authentication and exact installed-version verification.
-- Real CUPS read found the existing printer and no queued jobs; no printer state
-  was modified. No removable hardware was available, so USB changes use fixtures.
-- Fixed kernel and USB-hardware commands execute inside Bubblewrap.
+- OpenRouter search: exact configured DeepSeek model and price caps, Parallel Fast,
+  `max_uses: 1`; Wafer provider, one search, five citations, 2.695 seconds,
+  API-reported USD 0.001301652.
+- Installed agent: `system_info` plus final model round completed in 4.99 seconds;
+  Cohere/Baidu providers, API-reported USD 0.00116199912. The original active
+  conversation was restored after the synthetic acceptance conversation.
+- A bounded request exposing only one server page-fetch completed in 2.308 seconds,
+  Particle AI provider, API-reported USD 0.00017498. The API omitted fetch usage, so
+  this confirms request compatibility, not a verified fetch count.
+- Real HTTPS browser navigation, read/scroll and hashed download delivery passed.
+  The browser has no personal home, key, session bus or direct host network access.
+  Visible sessions persist; hidden idle sessions terminate and remove their profile.
+- PackageKit resolved configured-repository packages and installed the required
+  python-pycups dependency through normal authentication; exact installed version
+  was checked afterwards. General upgrades/removals were never requested.
+- Real CUPS inspection found the existing printer and queue; printer configuration
+  and physical printing were not changed. USB/CUPS mutation checks use fixtures.
 
-Installation/migration, broader hardware/window-control checks, browser interaction
-fixtures and Tidal capture/restore acceptance remain outstanding.
+## Installed desktop, appearance and performance
 
-- Disposable clean installation, reinstall, uninstall, retained/deleted private data,
-  code rollback, active-conversation migration and retry after a wallet failure pass.
-- The user-local service is installed and running hidden with the migrated validated
-  wallet key. Legacy activation remains intact pending final desktop acceptance.
-- Real installed agent check: two rounds, system_info completed, API-reported total
-  USD 0.00116199912 and 4.99 seconds. No personal file was read for this check.
+- Existing key copied and verified in KWallet; SQLite history and active conversation
+  migrated. The original wallet/history remain available for explicit recovery.
+- Installed singleton service starts hidden, persists work while hidden and answers
+  D-Bus activation. Legacy activation retirement, restoration and retirement passed.
+- Native Tidal and Breeze QML checks at 200%: Enter, Shift+Enter, Esc, drafts,
+  settings categories and account form. The optional widget loaded in a disposable
+  Plasma environment; its D-Bus bridge and missing-service state were exercised.
+- Actual KGlobalAccel F12: centered placement, focus and previous-window restoration.
+  Physical Wayland pointer: 96px boundary, 300ms dwell, leave cancellation and
+  open-only behavior. Home/Work desktop routing passed with original names restored.
+- Warm open: 34.09 ms; frame geometry 304,34,832,592 on a 1440x900 logical output,
+  below its 30px panel. The content area is 800x560; Plasma adds its frame margins.
+- Settings and separate browser passed restored, maximized, partial-maximized and
+  fullscreen Tidal window-control checks. Native frames return on restoration;
+  full maximization uses the existing panel controls. No panel button was added.
+- Eight-second hidden-idle sample: 0.0% of one CPU core, 127.02 MiB proportional
+  resident memory (242.52 MiB RSS including shared Qt libraries). This is a local
+  measurement, not a performance guarantee for other systems. No idle browser
+  remains resident after its 90-second timeout.
+- Private Tidal integration: 127 tests, allowlisted capture, no-drift verification
+  and a second capture with no changes. Restore of 187 captured files into a
+  disposable home preserved private/unknown JSON fields; repeat restore changed 0.
 
-- Installed KDE acceptance: physical Wayland pointer movement opened the exact
-  top-center zone; outside-boundary and short-dwell checks did not open it.
-  F12/KGlobalAccel focus/restore and temporary Home/Work routing checks passed;
-  original desktop names, selection and pointer position were restored.
-  Warm visibility was 34.52 ms; geometry remained 304,34,832,592 logical pixels.
-- Hidden installed service over eight seconds: 0.0% of one CPU core, PSS 127.02
-  MiB (RSS 242.52 MiB, including shared Qt/KDE pages), no resident browser.
-- Browser interaction fixtures pass in isolated Chromium: links, fixed non-form
-  button action, Portuguese GET searches, rejection of POST/password forms,
-  page-initiated POST blocking, cancellation and fresh navigation afterwards.
-- Live model catalogue lookup confirmed the selected model's supported parameters;
-  removable-device selection and model-capability reads are asynchronous UI actions.
-- Arch source/widget/package build passed all 81 then-current tests. GitHub's
-  Arch/Plasma CI passed at cea1774; later release checks will cover the final commit.
+The standalone popup uses `PlasmaCore.Dialog` with a utility-window role, retaining
+Plasma background/blur/slide behavior while allowing independent positioning. The
+AppletPopup role ignored absolute positioning outside a panel containment. The
+optional widget uses Plasma's own containment popup.
 
-- Final button-driven browser validation found and fixed a Linux PDEATHSIG
-  lifetime issue: the child is now owned by a dedicated thread that lives as
-  long as the browser, rather than a short-lived UI/tool request thread.
-  The regression test launches from a temporary thread and verifies continued
-  page interaction after that thread exits. Both browser suites pass afterwards.
+## Limits of this evidence
 
-- The public-web gateway also rejects globally numbered addresses assigned to the
-  host and IPv6 transition/NAT64 encodings, in addition to private/loopback DNS.
-- The expanded remote CI browser fixture needs environment diagnosis; local
-  isolated-browser suites pass. This is tracked before release rather than hidden.
+- One physical monitor was available. Additional output coordinates are simulated;
+  this is not a claim of testing real mixed-DPI or multi-monitor hardware.
+- No removable drive was available. UDisks mount/unmount/eject and device identity
+  changes are tested against service fixtures, not a real USB/Ventoy device.
+- CUPS discovery is real; configuration, queue changes and job submission are fixture
+  tested. Successful submission would still not prove that paper was printed.
+- Not every third-party website is supported. Browser operations deliberately refuse
+  authenticated accounts, publication, purchases and non-search form submission.
+- Obsidian plugins with nonstandard link formats are not rewritten automatically;
+  ambiguous native references are refused rather than guessed.
+- No full reboot was performed during this live desktop session. Background start,
+  restart, singleton, D-Bus and installed autostart files were checked separately.
+
+Keys, personal conversations, screenshots of real data and runtime journals are
+not included in this repository or release assets. Source scans run before pushes.

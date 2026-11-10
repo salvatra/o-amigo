@@ -2,8 +2,9 @@
 
 A native KDE Plasma assistant with an independent local service, a themed popup,
 an optional Plasma widget and OpenRouter. Initial target: Arch Linux with Plasma 6.
-The current source is an installable **development preview**; release acceptance
-is tracked in [VALIDATION.md](VALIDATION.md). It is not published on KDE Store.
+Version **0.1.0** is the initial installable release; tested behavior and hardware
+limitations are recorded in [VALIDATION.md](VALIDATION.md). It is not published on
+KDE Store. [Guia rápido em português](UTILIZACAO.md).
 
 ## Install on Arch / Plasma
 

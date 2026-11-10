@@ -1,54 +1,28 @@
-# Implementation status
+# Implementation map — 0.1.0
 
-This file reports implemented behavior, not a claim that the full accepted plan
-has been delivered.
+The initial release implements the accepted desktop assistant scope. This file
+maps features to their maintained sources; test evidence and practical limits are
+in [VALIDATION.md](VALIDATION.md).
 
-## Completed
+| Area | Sources |
+|---|---|
+| Independent service, single instance, D-Bus activation | `amigo/app.py`, `amigo/controller.py` |
+| Native popup, chat, history and categorized settings | `qml/`, `amigo/settings_ui.py`, `amigo/presentation.py` |
+| F12, exact top-center hover region, focus restoration | `kwin/`, `amigo/integration.py` |
+| Optional widget sharing the chat UI | `widget/`, `scripts/build_widget.py` |
+| Exact model, capped routing, streamed tool calls and citations | `amigo/protocol.py`, `amigo/network.py` |
+| Durable bounded agent, approval and continuation | `amigo/agent.py`, `amigo/approval.py`, `amigo/history.py` |
+| Validated catalogue, paths, exclusions and isolated workers | `amigo/tools.py`, `amigo/schema.py`, `amigo/policy.py`, `amigo/sandbox.py` |
+| Recoverable files, hashes, dates and conflict handling | `amigo/files.py`, `amigo/transactions.py` |
+| PDF, archives and link-aware Obsidian operations | `amigo/documents.py`, `amigo/archive_worker.py`, `amigo/obsidian.py` |
+| Typed USB, CUPS, PackageKit and fixed diagnostics | `amigo/devices.py`, `amigo/printers.py`, `amigo/packages.py`, `amigo/system.py` |
+| Ephemeral Chromium, controlled public gateway | `amigo/browser.py`, `amigo/browser_worker.py`, `amigo/web_proxy.py`, `amigo/web_policy.py` |
+| User-local install, migration, rollback and removal | `scripts/install.py`, `amigo/migration.py`, `scripts/rollback.py`, `scripts/legacy.py`, `scripts/uninstall.py` |
+| Source/widget/Arch release artefacts | `scripts/build_release.py`, `packaging/` |
 
-- Public source repository and incremental commits.
-- Import of the existing client without credentials or user data.
-- Enforced path policy and closed read-only capability registry.
-- Bubblewrap wrapper with a minimal filesystem, clean environment and no network.
-- Tests for protected paths, links, command injection and unexpected arguments.
-- Native Plasma popup preview and independently stored preview settings.
-- Atomic file edits, verified copies/moves, timestamps, desktop Trash and directory creation.
-- Durable recovery journal with quota/retention, undo conflicts and crash interruption state.
-- Structured streaming tool-call assembly and exact provider price policy.
-- PDF page selection/reordering/merging/splitting in Bubblewrap, with output verification.
-- ZIP/TAR inspection/extraction and ZIP creation, with traversal/link/size checks.
-- Obsidian note/attachment moves updating native wiki, Markdown and Canvas references in a recoverable batch.
-- Durable sequential agent loop, cancellation, continuation budgets and mutation deduplication.
-- Batched QtNetwork streaming, tool/context persistence, citations and actual-cost accounting.
-- OpenRouter server search with per-request caps and conservative task-wide usage accounting.
-- 82 automated tests; a real bounded OpenRouter search also passed (see VALIDATION.md).
-- Standalone native Plasma dialog connected to the service, Markdown conversation UI and paginated history.
-- Seven settings categories, KWallet account UI, recovery/export and enforced per-tool disabling.
-- D-Bus activation/singleton, keyboard controls, event-driven KWin focus/shortcut and exact hover-zone logic.
-- Native Tidal and Breeze GUI checks; KDE shortcut opens centered below the panel and restores focus.
-- Optional Plasma widget built from the same ChatView source; event-driven D-Bus client and missing-service guidance.
-
-- On-demand Qt WebEngine browser isolated by Bubblewrap, with a pinned-DNS public-network gateway, bounded downloads and hidden-idle teardown.
-- One-use approval gate bound to a freshly prepared plan; no model approval capability and no grants surviving restart.
-- PackageKit repository search, inspection, dependency preview and approved signed installation with version verification.
-- Selected UDisks2 removable volumes, safe mount/unmount/eject; no block writes or partition operations.
-- CUPS status/discovery, installed drivers, approved configuration/queue actions and staged print submission.
-- Fixed read-only system diagnostics; administrative adapters use typed system services, never a generated root command.
-
-- User-local versioned installer, native activation/autostart/rule integration and installed service.
-- Private SQLite/KWallet migration preserving the active conversation; clean/reinstall/uninstall/rollback fixture checks.
-- Real installed agent task completed a system_info call and a final model round.
-- Source/widget/Arch packaging scripts, dependency notices and CI workflow.
-
-## Required before final release
-
-- Final installed lifecycle and multi-desktop/monitor checks.
-- Final recovery and concurrent-change acceptance review.
-- Final hardware limitations are documented; no removable device was available.
-- Final settings/browser window-control integration and installed lifecycle acceptance.
-- Broader adversarial tests, cancellation and crash recovery tests.
-- Live theme/focus/performance verification and settings-window integration.
-- Build and inspect Arch artefacts; run remote CI; finish installed update/rollback checks.
-- Tidal capture/restore integration and pinned tested release.
-
-Do not publish a stable release or replace the working Quick Ask installation
-until these requirements are verified.
+There is no arbitrary terminal/Python capability, model-accessible policy editor,
+root session, AUR/general-update operation, partition/format operation, personal
+browser profile, account automation, publishing or purchasing capability. Public
+defaults grant no personal folders and keep optional tools disabled until chosen.
+The private Tidal repository contains its own preferences, capture allowlist and
+an exact public commit pin; it does not fork the application sources.
