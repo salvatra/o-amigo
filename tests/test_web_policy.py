@@ -12,12 +12,16 @@ class WebPolicyTests(unittest.TestCase):
         for url in ['file:///etc/passwd','http://127.0.0.1','http://localhost','https://localhost.localdomain','http://[::1]',
                     'http://169.254.169.254','http://192.168.1.1','http://10.0.0.1','http://[::ffff:127.0.0.1]',
                     'http://[fe80::1%25eth0]','http://example.com:22','http://user:password@example.com','http://example.com\r\nHost:evil',
-                    'http://router.local','ftp://example.com/file']:
+                    'http://router.local','ftp://example.com/file','http://[64:ff9b::7f00:1]','http://[2002:7f00:1::]']:
             with self.subTest(url=url):
                 with self.assertRaises(Denied):parse_url(url)
     def test_mixed_dns_and_rebinding_addresses_rejected(self):
         records=[(socket.AF_INET,socket.SOCK_STREAM,6,'',('93.184.216.34',443)),(socket.AF_INET,socket.SOCK_STREAM,6,'',('127.0.0.1',443))]
         with patch('socket.getaddrinfo',return_value=records):
+            with self.assertRaises(Denied):resolve_public('example.com',443)
+    def test_globally_numbered_host_address_is_not_public_destination(self):
+        records=[(socket.AF_INET6,socket.SOCK_STREAM,6,'',('2606:4700:4700::1111',443,0,0))]
+        with patch('socket.getaddrinfo',return_value=records),patch('amigo.web_policy.local_addresses',return_value={'2606:4700:4700::1111'}):
             with self.assertRaises(Denied):resolve_public('example.com',443)
     def test_numeric_addresses_are_pinned(self):
         records=[(socket.AF_INET,socket.SOCK_STREAM,6,'',('93.184.216.34',443))]

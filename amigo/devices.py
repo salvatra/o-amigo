@@ -17,7 +17,7 @@ class SystemBus:
         self.dbus=dbus;self.bus=dbus.SystemBus(private=True)
     def objects(self):return self.dbus.Interface(self.bus.get_object(SERVICE,BASE),'org.freedesktop.DBus.ObjectManager').GetManagedObjects(timeout=15)
     def action(self,path,interface,method):
-        if interface==FS and method not in ('Mount','Unmount') or interface==DRIVE and method not in ('PowerOff','Eject'):raise Denied('Unknown device operation')
+        if method not in {FS:('Mount','Unmount'),DRIVE:('PowerOff','Eject')}.get(interface,()):raise Denied('Unknown device operation')
         options={'options':'nosuid,nodev'} if method=='Mount' else {}
         return getattr(self.dbus.Interface(self.bus.get_object(SERVICE,path),interface),method)(self.dbus.Dictionary(options,signature='sv'),timeout=120)
     def close(self):self.bus.close()

@@ -4,7 +4,7 @@ Development evidence; this is not a release acceptance report yet.
 
 ## 2026-11-10
 
-- 82 automated tests pass (`python -m unittest discover -s tests`).
+- 83 automated tests pass (`python -m unittest discover -s tests`).
 - Real Bubblewrap runs: qpdf page reordering/splitting/checking, Poppler text,
   ZIP round-trip, TAR/ZIP malicious-entry rejection, manual reading.
 - HTTP fixtures: byte-fragmented Portuguese UTF-8, fragmented tool arguments,
@@ -81,3 +81,8 @@ fixtures and Tidal capture/restore acceptance remain outstanding.
   long as the browser, rather than a short-lived UI/tool request thread.
   The regression test launches from a temporary thread and verifies continued
   page interaction after that thread exits. Both browser suites pass afterwards.
+
+- The public-web gateway also rejects globally numbered addresses assigned to the
+  host and IPv6 transition/NAT64 encodings, in addition to private/loopback DNS.
+- The expanded remote CI browser fixture needs environment diagnosis; local
+  isolated-browser suites pass. This is tracked before release rather than hidden.

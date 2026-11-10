@@ -23,6 +23,17 @@ PAGE=b'''<!doctype html><title>Fixture</title><body><h1>Fixture page</h1>
 <form method="post" action="/forbidden"><input name="q" placeholder="Post search"></form>
 <form action="/login"><input name="q" placeholder="Account search"><input type="password" name="password"></form>
 <script>fetch('/forbidden',{method:'POST',body:'must not arrive'}).catch(()=>{});</script></body>'''
+class CheckedBrowser(Browser):
+ def __init__(self,*args,**kwargs):super().__init__(*args,**kwargs);self.test_errors=bytearray()
+ def discard_errors(self,process):
+  try:
+   while chunk:=process.stderr.read(4096):self.test_errors.extend(chunk[:max(0,8192-len(self.test_errors))])
+  finally:process.stderr.close()
+ def start(self):
+  try:return super().start()
+  except Exception:
+   time.sleep(.1);print('Synthetic browser fixture startup diagnostics:',self.test_errors.decode(errors='replace'),file=sys.stderr);raise
+
 requests=[]
 class Handler(http.server.BaseHTTPRequestHandler):
  def log_message(self,*args):pass
@@ -42,7 +53,7 @@ class FixtureProxy(PublicProxy):
   return connection
 try:
  with tempfile.TemporaryDirectory() as folder,patch('amigo.browser.PublicProxy',FixtureProxy):
-  browser=Browser(Path(folder),headless=True)
+  browser=CheckedBrowser(Path(folder),headless=True)
   try:
    initial=[]
    launcher=threading.Thread(target=lambda:initial.append(browser.request('navigate',{'url':'http://fixture.example/'})))
