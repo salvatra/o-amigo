@@ -1,0 +1,13 @@
+{
+  "KPlugin": {
+    "Id": "o-amigo",
+    "Name": "O Amigo",
+    "Description": "Assistant popup shortcut, exact top-center hover zone and focus restoration",
+    "Version": "0.1.0",
+    "License": "MIT",
+    "Authors": [{"Name": "O Amigo contributors"}]
+  },
+  "X-Plasma-API": "javascript",
+  "X-Plasma-MainScript": "code/main.js",
+  "KPackageStructure": "KWin/Script"
+}

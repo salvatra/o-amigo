@@ -49,6 +49,7 @@ class Agent(QObject):
                     'thinking':thinking,'settings':settings,'rounds':0,'searches':0,'round_limit':settings['max_rounds'],
                     'search_limit':settings['max_searches'],'status':'running','text':'','actions':[],
                     'known_cost':0.0,'unknown_cost_rounds':0,'sources':[],'pending':[],'error':'','providers':[]}
+        self.state['elapsed']=0.0
         self.identifier=None;self.round_text='';self.cancel_event.clear();self.persist();self.next_round()
 
     def restore(self,conversation):
@@ -104,6 +105,7 @@ class Agent(QObject):
         elif reserved:self.state['search_usage_uncertain']=True
         if 'cost' in metadata:self.state['known_cost']+=metadata['cost']
         else:self.state['unknown_cost_rounds']+=1
+        self.state['elapsed']=self.state.get('elapsed',0)+metadata.get('elapsed',0)
         provider=metadata.get('provider')
         if provider and provider not in self.state['providers']:self.state['providers'].append(provider)
         for source in metadata.get('sources',[]):

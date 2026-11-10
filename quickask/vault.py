@@ -3,10 +3,11 @@ from PyQt6.QtCore import QObject, QProcess, QTimer
 
 
 class Vault(QObject):
-    def __init__(self, parent=None, attributes=('application', 'quick-ask', 'provider', 'openrouter')):
+    def __init__(self, parent=None, attributes=('application', 'quick-ask', 'provider', 'openrouter'), label='Quick Ask — OpenRouter'):
         super().__init__(parent)
         self.processes = set()
         self.attributes = attributes
+        self.label = label
 
     def run(self, action, callback, key=''):
         process = QProcess(self)
@@ -16,7 +17,7 @@ class Vault(QObject):
         timer.timeout.connect(process.kill)
         args = [action]
         if action == 'store':
-            args += ['--label=Quick Ask — OpenRouter']
+            args += ['--label='+self.label]
         args += list(self.attributes)
         completed = False
 
