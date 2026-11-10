@@ -20,7 +20,7 @@ has been delivered.
 - Durable sequential agent loop, cancellation, continuation budgets and mutation deduplication.
 - Batched QtNetwork streaming, tool/context persistence, citations and actual-cost accounting.
 - OpenRouter server search with per-request caps and conservative task-wide usage accounting.
-- 77 automated tests; a real bounded OpenRouter search also passed (see VALIDATION.md).
+- 81 automated tests; a real bounded OpenRouter search also passed (see VALIDATION.md).
 - Standalone native Plasma dialog connected to the service, Markdown conversation UI and paginated history.
 - Seven settings categories, KWallet account UI, recovery/export and enforced per-tool disabling.
 - D-Bus activation/singleton, keyboard controls, event-driven KWin focus/shortcut and exact hover-zone logic.
@@ -34,15 +34,20 @@ has been delivered.
 - CUPS status/discovery, installed drivers, approved configuration/queue actions and staged print submission.
 - Fixed read-only system diagnostics; administrative adapters use typed system services, never a generated root command.
 
-## Required before migration or release
+- User-local versioned installer, native activation/autostart/rule integration and installed service.
+- Private SQLite/KWallet migration preserving the active conversation; clean/reinstall/uninstall/rollback fixture checks.
+- Real installed agent task completed a system_info call and a final model round.
+- Source/widget/Arch packaging scripts, dependency notices and CI workflow.
 
-- Installed lifecycle and final multi-desktop/monitor checks.
+## Required before final release
+
+- Final installed lifecycle and multi-desktop/monitor checks.
 - Recovery interface and broader concurrent-change/cancellation coverage.
 - Broader device/CUPS hardware acceptance and permission-selection UX.
 - Browser interaction fixtures, final native appearance and window-control integration.
 - Broader adversarial tests, cancellation and crash recovery tests.
 - Live theme/focus/performance verification and settings-window integration.
-- Packaging, migration, uninstall/rollback and actual dependency installation.
+- Build and inspect Arch artefacts; run remote CI; finish installed update/rollback checks.
 - Tidal capture/restore integration and pinned tested release.
 
 Do not publish a stable release or replace the working Quick Ask installation

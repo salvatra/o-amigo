@@ -4,7 +4,7 @@ Development evidence; this is not a release acceptance report yet.
 
 ## 2026-11-10
 
-- 77 automated tests pass (`python -m unittest discover -s tests`).
+- 81 automated tests pass (`python -m unittest discover -s tests`).
 - Real Bubblewrap runs: qpdf page reordering/splitting/checking, Poppler text,
   ZIP round-trip, TAR/ZIP malicious-entry rejection, manual reading.
 - HTTP fixtures: byte-fragmented Portuguese UTF-8, fragmented tool arguments,
@@ -53,3 +53,10 @@ will use Plasma's own containment popup.
 
 Installation/migration, broader hardware/window-control checks, browser interaction
 fixtures and Tidal capture/restore acceptance remain outstanding.
+
+- Disposable clean installation, reinstall, uninstall, retained/deleted private data,
+  code rollback, active-conversation migration and retry after a wallet failure pass.
+- The user-local service is installed and running hidden with the migrated validated
+  wallet key. Legacy activation remains intact pending final desktop acceptance.
+- Real installed agent check: two rounds, system_info completed, API-reported total
+  USD 0.00116199912 and 4.99 seconds. No personal file was read for this check.

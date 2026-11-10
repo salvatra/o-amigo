@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=O Amigo
+Comment=Assistente nativo com OpenRouter
+Exec=o-amigo --show
+Icon=help-hint
+Terminal=false
+Categories=Utility;
+StartupNotify=false
+StartupWMClass=org.kde.oamigo

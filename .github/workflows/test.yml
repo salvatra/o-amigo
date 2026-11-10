@@ -1,0 +1,32 @@
+name: Test and package
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  arch-plasma:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+      options: --privileged
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install test dependencies
+        run: >-
+          pacman -Syu --noconfirm --needed python python-pyqt6 python-pyqt6-webengine
+          python-dbus python-gobject python-pycups qt6-declarative kirigami libplasma
+          kdeplasma-addons kconfig kglobalaccel libsecret bubblewrap qpdf poppler
+          man-db udisks2 cups cups-pk-helper packagekit usbutils fontconfig git
+      - name: Test broker, protocols, migration and recovery
+        run: python -m unittest discover -s tests -v
+      - name: Check native QML interface
+        run: QT_QUICK_BACKEND=software python tests/verify_ui.py
+      - name: Build widget
+        run: python scripts/build_widget.py
+      - name: Compile source
+        run: python -m compileall -q amigo quickask scripts
