@@ -4,7 +4,7 @@ Development evidence; this is not a release acceptance report yet.
 
 ## 2026-11-10
 
-- 81 automated tests pass (`python -m unittest discover -s tests`).
+- 82 automated tests pass (`python -m unittest discover -s tests`).
 - Real Bubblewrap runs: qpdf page reordering/splitting/checking, Poppler text,
   ZIP round-trip, TAR/ZIP malicious-entry rejection, manual reading.
 - HTTP fixtures: byte-fragmented Portuguese UTF-8, fragmented tool arguments,
@@ -60,3 +60,18 @@ fixtures and Tidal capture/restore acceptance remain outstanding.
   wallet key. Legacy activation remains intact pending final desktop acceptance.
 - Real installed agent check: two rounds, system_info completed, API-reported total
   USD 0.00116199912 and 4.99 seconds. No personal file was read for this check.
+
+- Installed KDE acceptance: physical Wayland pointer movement opened the exact
+  top-center zone; outside-boundary and short-dwell checks did not open it.
+  F12/KGlobalAccel focus/restore and temporary Home/Work routing checks passed;
+  original desktop names, selection and pointer position were restored.
+  Warm visibility was 34.52 ms; geometry remained 304,34,832,592 logical pixels.
+- Hidden installed service over eight seconds: 0.0% of one CPU core, PSS 127.02
+  MiB (RSS 242.52 MiB, including shared Qt/KDE pages), no resident browser.
+- Browser interaction fixtures pass in isolated Chromium: links, fixed non-form
+  button action, Portuguese GET searches, rejection of POST/password forms,
+  page-initiated POST blocking, cancellation and fresh navigation afterwards.
+- Live model catalogue lookup confirmed the selected model's supported parameters;
+  removable-device selection and model-capability reads are asynchronous UI actions.
+- Arch source/widget/package build passed all 81 then-current tests. GitHub's
+  Arch/Plasma CI passed at cea1774; later release checks will cover the final commit.

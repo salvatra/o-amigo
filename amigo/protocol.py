@@ -46,8 +46,10 @@ def request(settings, messages, thinking=False, tools=False, search_budget=0, fe
         if settings.get('excluded_domains'):parameters['blocked_domains']=settings['excluded_domains']
         body.setdefault('tools',[]).append({'type':'openrouter:web_fetch','parameters':parameters})
         body['max_tool_calls']=min(search_budget+fetch_budget,30)
-    if settings['temperature'] is not None:body['temperature']=settings['temperature']
-    if settings.get('top_p') is not None:body['top_p']=settings['top_p']
+    for parameter in ('temperature','top_p','top_k','min_p','frequency_penalty','presence_penalty','repetition_penalty','seed'):
+        if settings.get(parameter) is not None:body[parameter]=settings[parameter]
+    if settings.get('stop'):body['stop']=list(settings['stop'])
+    if thinking and settings.get('reasoning_effort','auto')!='auto':body['reasoning']['effort']=settings['reasoning_effort']
     return body
 
 class Assembly:

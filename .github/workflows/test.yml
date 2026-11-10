@@ -21,11 +21,17 @@ jobs:
           pacman -Syu --noconfirm --needed python python-pyqt6 python-pyqt6-webengine
           python-dbus python-gobject python-pycups qt6-declarative kirigami libplasma
           kdeplasma-addons kconfig kglobalaccel libsecret bubblewrap qpdf poppler
-          man-db udisks2 cups cups-pk-helper packagekit usbutils fontconfig git
+          man-db udisks2 cups cups-pk-helper packagekit usbutils fontconfig git gitleaks
       - name: Test broker, protocols, migration and recovery
         run: python -m unittest discover -s tests -v
       - name: Check native QML interface
         run: QT_QUICK_BACKEND=software python tests/verify_ui.py
+      - name: Check isolated Chromium interactions
+        run: |
+          useradd -m browsercheck
+          runuser -u browsercheck -- python tests/verify_browser_interactions.py
+      - name: Scan committed sources for secrets
+        run: gitleaks dir . --no-banner --redact
       - name: Build widget
         run: python scripts/build_widget.py
       - name: Compile source

@@ -116,6 +116,7 @@ Item {
                 RowLayout {
                     PC.CheckBox { id: think; text: "Pensar mais"; enabled: !view.state.busy }
                     Item { Layout.fillWidth: true }
+                    PC.Button { visible: !!view.state.task && !!view.state.task.recovery_blocked; text: "Configurar recuperação"; icon.name: "configure"; onClicked: bridge.openSettings() }
                     PC.Button { visible: !!view.state.task && ["paused", "failed", "interrupted"].indexOf(view.state.task.status) >= 0; text: "Continuar"; icon.name: "media-playback-start"; enabled: !view.state.busy; onClicked: bridge.resume() }
                     PC.Button { visible: view.state.busy; text: "Interromper"; icon.name: "process-stop"; onClicked: bridge.cancel() }
                     PC.Button { visible: !view.state.busy; text: "Enviar"; icon.name: "mail-send"; enabled: prompt.text.trim().length > 0; onClicked: { draftTimer.stop(); bridge.send(prompt.text, think.checked); prompt.text = ""; view.focusComposer(); } }
@@ -126,7 +127,7 @@ Item {
                     PC.Label { text: "Confirmar operação"; font.bold: true }
                     PC.ScrollView {
                         Layout.fillWidth: true; Layout.preferredHeight: 130
-                        PC.TextArea { text: view.state.approval ? JSON.stringify(view.state.approval.plan, null, 2) : ""; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText }
+                        PC.TextArea { text: view.state.approval ? view.state.approval.summary : ""; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText }
                     }
                     RowLayout {
                         PC.Button { text: "Recusar"; onClicked: bridge.decide(view.state.approval.token, false) }

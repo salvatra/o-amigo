@@ -6,8 +6,9 @@ import re
 import tempfile
 import threading
 from urllib.parse import urlsplit
-from PyQt6.QtCore import QObject,QTimer,QUrl,QMetaType,pyqtProperty,pyqtSignal,pyqtSlot
+from PyQt6.QtCore import QObject,QThread,QTimer,QUrl,QMetaType,pyqtProperty,pyqtSignal,pyqtSlot
 from PyQt6.QtGui import QGuiApplication,QDesktopServices
+from PyQt6.QtNetwork import QNetworkRequest,QNetworkReply
 from PyQt6.QtDBus import QDBusArgument,QDBusConnection,QDBusMessage
 from quickask.vault import Vault
 from .agent import Agent
@@ -22,6 +23,7 @@ from .settings import validate
 from .integration import set_shortcut
 from .browser import Browser
 from .approval import ApprovalGate
+from .devices import Devices
 
 def display_markdown(text):
     # Keep user/model Markdown passive: no images, HTML elements or file resources.
@@ -29,6 +31,28 @@ def display_markdown(text):
     text=re.sub(r'!\[([^\]]*)\]\[[^\]]*\]',r'[imagem: \1]',text)
     text=text.replace('![','[')
     return text.replace('<','&lt;').replace('>','&gt;')
+
+def approval_text(plan):
+    lines=[plan.get('operation','Confirmar operação')]
+    labels={'requested':'Pedido','printer':'Impressora','device_uri':'Destino','driver':'Controlador','description':'Descrição',
+            'location':'Localização','file':'Ficheiro','bytes':'Tamanho em bytes','sha256':'SHA-256','copies':'Cópias',
+            'action':'Ação','job':'Trabalho','before':'Estado atual','authentication':'Autenticação','irreversible':'Atenção'}
+    for key,value in plan.items():
+        if key=='operation' or value is None or value==[] or value=='':continue
+        if key=='changes':
+            for item in value:lines.append(f"{item['action']}: {item['name']} {item['version']} ({item['repository']})")
+        else:
+            text=json.dumps(value,ensure_ascii=False,indent=2) if isinstance(value,(list,dict)) else str(value)
+            lines.append(labels.get(key,key)+': '+text)
+    return '\n\n'.join(lines)
+
+class DeviceReader(QThread):
+    result=pyqtSignal(str)
+    def run(self):
+        devices=Devices()
+        try:self.result.emit(json.dumps({'devices':devices.identify()},ensure_ascii=False))
+        except Exception:self.result.emit(json.dumps({'devices':[],'error':'Não foi possível consultar o UDisks.'}))
+        finally:devices.close()
 
 class Controller(QObject):
     changed=pyqtSignal()
@@ -41,11 +65,13 @@ class Controller(QObject):
     placementRequested=pyqtSignal(int,int,int,int)
     historyReady=pyqtSignal(str,bool)
     browserNotice=pyqtSignal(str)
+    devicesReady=pyqtSignal(str)
+    catalogReady=pyqtSignal(str)
 
     def __init__(self,settings,data_root,demo=False):
         super().__init__();self.settings=settings;self.data_root=Path(data_root);self.history=History(data_root)
         self.conversation=self.history.active();self.demo=demo;self._key='';self.validated=False;self.key_busy=False
-        self.notice='';self.visible=False;self.pinned=settings.value['pinned'];self.draft='';self.rows=[]
+        self.notice='';self.visible=False;self.pinned=settings.value['pinned'];self.draft='';self.rows=[];self.device_reader=None;self.catalog_reply=None
         self.vault=Vault(self,('application','o-amigo','provider','openrouter'),label='O Amigo — OpenRouter')
         self.test_stream=Stream(self);self.test_stream.finished.connect(self.key_test_finished)
         self.browser=Browser(self.data_root/'browser',settings.value['browser_idle_seconds'])
@@ -88,8 +114,8 @@ class Controller(QObject):
             rows.append({'id':row['id'],'role':row['role'],'content':display_markdown(content),'raw':content,'status':status})
         return json.dumps({'ready':self.validated,'keyBusy':self.key_busy,'busy':self.agent.busy,'notice':self.notice,
                            'conversation':self.conversation,'draft':self.draft,'messages':rows,'pinned':self.pinned,'browserEnabled':self.settings.value['browser_enabled'],
-                           'task':{k:task.get(k) for k in ('status','error','rounds','searches','known_cost','unknown_cost_rounds','sources','providers','elapsed')} if task else None,
-                           'approval':task.get('approval') if task else None,
+                           'task':{k:task.get(k) for k in ('status','error','rounds','searches','known_cost','unknown_cost_rounds','sources','providers','elapsed','recovery_blocked')} if task else None,
+                           'approval':(task['approval']|{'summary':approval_text(task['approval']['plan'])}) if task and task.get('approval') else None,
                            'actions':[{'name':a['name'],'status':a['status'],
                                        'details':json.dumps({k:(v[:200]+'…' if isinstance(v,str) and len(v)>200 else v) for k,v in a['arguments'].items()},ensure_ascii=False,indent=2),
                                        'result':json.dumps(a.get('result',{}),ensure_ascii=False,indent=2)[:2000]} for a in task.get('actions',[])] if task else []},ensure_ascii=False)
@@ -210,6 +236,34 @@ class Controller(QObject):
     @pyqtSlot()
     def quit(self):self.quitRequested.emit()
 
+    @pyqtSlot()
+    def refreshDevices(self):
+        if self.device_reader:return
+        self.device_reader=DeviceReader(self);reader=self.device_reader
+        reader.result.connect(self.devicesReady)
+        def done():self.device_reader=None;reader.deleteLater()
+        reader.finished.connect(done);reader.start()
+
+    @pyqtSlot(str)
+    def refreshCatalog(self,model):
+        if self.catalog_reply:return
+        req=QNetworkRequest(QUrl('https://openrouter.ai/api/v1/models'))
+        req.setTransferTimeout(15000)
+        req.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute,QNetworkRequest.RedirectPolicy.ManualRedirectPolicy)
+        reply=self.test_stream.manager.get(req);self.catalog_reply=reply;buffer=bytearray()
+        def read():
+            buffer.extend(bytes(reply.readAll()))
+            if len(buffer)>8*1024**2:reply.abort()
+        def done():
+            read();result={'error':'Não foi possível consultar o catálogo de modelos.'}
+            try:
+                if reply.error()==QNetworkReply.NetworkError.NoError and reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)==200:
+                    found=next((row for row in json.loads(buffer)['data'] if row['id']==model),None)
+                    result={k:found.get(k) for k in ('id','name','context_length','supported_parameters','architecture')} if found else {'error':'Modelo não encontrado no catálogo atual; não foi alterado automaticamente.'}
+            except (ValueError,KeyError,TypeError):pass
+            self.catalog_reply=None;reply.deleteLater();self.catalogReady.emit(json.dumps(result,ensure_ascii=False))
+        reply.readyRead.connect(read);reply.finished.connect(done)
+
     @pyqtSlot(str,result=str)
     def saveSettings(self,text):
         if self.agent.busy or self.key_busy:return 'Termina ou interrompe a tarefa antes de alterar definições.'
@@ -253,4 +307,7 @@ class Controller(QObject):
                                   'A tarefa terminou.' if self.agent.state['status']=='complete' else 'Há uma tarefa à espera de atenção.',
                                   array([],QMetaType.Type.QString),{},5000])
             QDBusConnection.sessionBus().asyncCall(message)
-    def close(self):self.browser.close();self.transactions.close();self.history.close();self._key=''
+    def close(self):
+        if self.catalog_reply:self.catalog_reply.abort()
+        if self.device_reader:self.device_reader.wait(16000)
+        self.browser.close();self.transactions.close();self.history.close();self._key=''

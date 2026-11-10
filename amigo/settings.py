@@ -10,7 +10,8 @@ DEFAULTS = {
  'routing':'balanced', 'providers':[], 'provider_mode':'preferred', 'ignored_providers':[], 'allow_fallbacks':True,
  'simple_tokens':1024, 'tool_tokens':4096, 'thinking_tokens':4096,
  'system_prompt':'Responde em português europeu, de forma breve e clara. Explicita unidades, pressupostos e incertezas. Só afirma ter efetuado uma ação quando a ferramenta confirmar o resultado.',
- 'include_time':True, 'temperature':None, 'top_p':None, 'max_rounds':16, 'max_searches':3, 'max_fetches':6,
+ 'include_time':True, 'temperature':None, 'top_p':None, 'top_k':None, 'min_p':None,
+ 'frequency_penalty':None, 'presence_penalty':None, 'repetition_penalty':None, 'seed':None, 'stop':[], 'reasoning_effort':'auto', 'max_rounds':16, 'max_searches':3, 'max_fetches':6,
  'language':'pt-PT', 'conciseness':'brief',
  'allowed_folders':[], 'tools_enabled':False, 'web_enabled':False,
  'protected_folders':[], 'allowed_removable':[], 'allowed_devices':[], 'disabled_tools':[],
@@ -36,7 +37,7 @@ def validate(value):
         if type(result[key])is not bool:raise ValueError('Invalid '+key)
     for key in ('input_price','output_price'):
         if type(result[key]) not in (int,float) or not 0 <= result[key] < 1e6: raise ValueError('Invalid '+key)
-    for key in ('allowed_folders','protected_folders','allowed_removable','allowed_devices','providers','ignored_providers','allowed_domains','excluded_domains','disabled_tools'):
+    for key in ('allowed_folders','protected_folders','allowed_removable','allowed_devices','providers','ignored_providers','allowed_domains','excluded_domains','disabled_tools','stop'):
         if not isinstance(result[key],list) or len(result[key])>100 or any(not isinstance(p,str) or not p or len(p)>4096 or '\x00' in p for p in result[key]):
             raise ValueError('Invalid '+key)
     for key in ('allowed_folders','protected_folders','allowed_removable'):
@@ -46,6 +47,12 @@ def validate(value):
     if result['provider_mode'] not in ('preferred','only'):raise ValueError('Invalid provider mode')
     if result['search_engine'] not in ('parallel','exa','perplexity','firecrawl'):raise ValueError('Use an engine that enforces server search limits')
     if result['search_mode'] not in ('auto','fast','basic','advanced','turbo','instant','deep-lite','deep','deep-reasoning'):raise ValueError('Invalid search mode')
+    if result['reasoning_effort'] not in ('auto','low','medium','high'):raise ValueError('Invalid reasoning effort')
+    for key,minimum,maximum in (('top_k',1,1000),('seed',0,2147483647)):
+        if result[key] is not None and (type(result[key]) is not int or not minimum<=result[key]<=maximum):raise ValueError('Invalid '+key)
+    for key,minimum,maximum in (('min_p',0,1),('frequency_penalty',-2,2),('presence_penalty',-2,2),('repetition_penalty',0.1,2)):
+        if result[key] is not None and (type(result[key]) not in (int,float) or not math.isfinite(result[key]) or not minimum<=result[key]<=maximum):raise ValueError('Invalid '+key)
+    if len(result['stop'])>4 or any(len(v)>256 for v in result['stop']):raise ValueError('Invalid stop sequences')
     for key,maximum in (('temperature',2),('top_p',1)):
         if result[key] is not None and (type(result[key])not in(int,float) or not math.isfinite(result[key]) or not 0<=result[key]<=maximum):raise ValueError('Invalid '+key)
     for key in ('system_prompt','shortcut','language','conciseness'):

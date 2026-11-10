@@ -20,7 +20,7 @@ has been delivered.
 - Durable sequential agent loop, cancellation, continuation budgets and mutation deduplication.
 - Batched QtNetwork streaming, tool/context persistence, citations and actual-cost accounting.
 - OpenRouter server search with per-request caps and conservative task-wide usage accounting.
-- 81 automated tests; a real bounded OpenRouter search also passed (see VALIDATION.md).
+- 82 automated tests; a real bounded OpenRouter search also passed (see VALIDATION.md).
 - Standalone native Plasma dialog connected to the service, Markdown conversation UI and paginated history.
 - Seven settings categories, KWallet account UI, recovery/export and enforced per-tool disabling.
 - D-Bus activation/singleton, keyboard controls, event-driven KWin focus/shortcut and exact hover-zone logic.
@@ -42,9 +42,9 @@ has been delivered.
 ## Required before final release
 
 - Final installed lifecycle and multi-desktop/monitor checks.
-- Recovery interface and broader concurrent-change/cancellation coverage.
-- Broader device/CUPS hardware acceptance and permission-selection UX.
-- Browser interaction fixtures, final native appearance and window-control integration.
+- Final recovery and concurrent-change acceptance review.
+- Final hardware limitations are documented; no removable device was available.
+- Final settings/browser window-control integration and installed lifecycle acceptance.
 - Broader adversarial tests, cancellation and crash recovery tests.
 - Live theme/focus/performance verification and settings-window integration.
 - Build and inspect Arch artefacts; run remote CI; finish installed update/rollback checks.

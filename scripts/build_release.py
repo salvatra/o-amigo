@@ -55,7 +55,7 @@ package() {{
     install -dm755 "$pkgdir/usr/lib/o-amigo/quickask" "$pkgdir/usr/bin"
     cp -r amigo qml kwin scripts "$pkgdir/usr/lib/o-amigo/"
     install -m644 quickask/__init__.py quickask/core.py quickask/vault.py "$pkgdir/usr/lib/o-amigo/quickask/"
-    install -m644 LICENSE THIRD_PARTY.md "$pkgdir/usr/lib/o-amigo/"
+    install -m644 LICENSE THIRD_PARTY.md SOURCE_REVISION "$pkgdir/usr/lib/o-amigo/"
     install -m755 packaging/o-amigo packaging/o-amigo-integrate "$pkgdir/usr/bin/"
     install -Dm644 packaging/org.kde.oamigo.desktop "$pkgdir/usr/share/applications/org.kde.oamigo.desktop"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/o-amigo/LICENSE"

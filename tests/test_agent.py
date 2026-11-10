@@ -10,6 +10,7 @@ from amigo.history import History
 from amigo.settings import Settings
 from amigo.protocol import request,Assembly
 from amigo.approval import ApprovalGate,ApprovalRequired
+from amigo.transactions import RecoveryUnavailable
 
 APP=QCoreApplication.instance() or QCoreApplication([])
 
@@ -119,6 +120,21 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(executed,[]);agent.decide(agent.state['approval']['token'],False)
         wait_for(lambda:agent.state['status']=='complete');self.assertEqual(executed,[])
         self.assertEqual(self.history.call(agent.identifier,'one')['status'],'denied')
+
+    def test_recovery_failure_pauses_and_only_explicit_continue_retries(self):
+        calls=[]
+        class RecoverableTools:
+            def call(self,name,args):
+                calls.append(args)
+                if len(calls)==1:raise RecoveryUnavailable('quota')
+                return {'verified':True}
+        self.tools=RecoverableTools();args={'path':'/note','text':'one'}
+        agent=self.agent([response({'role':'assistant','content':None,'tool_calls':[call('one',**args)]}),
+                          response({'role':'assistant','content':None,'tool_calls':[call('two',**args)]}),
+                          response({'role':'assistant','content':'Done'})])
+        agent.start(self.conversation,'write');wait_for(lambda:agent.state['status']=='paused')
+        self.assertEqual(len(calls),1);self.assertFalse(agent.busy)
+        agent.resume();wait_for(lambda:agent.state['status']=='complete');self.assertEqual(len(calls),2)
 
     def test_restart_marks_calls_uncertain(self):
         task=self.history.save_task(self.conversation,{'status':'tool'})

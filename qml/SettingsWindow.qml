@@ -11,6 +11,14 @@ Kirigami.ApplicationWindow {
     property int category: 0
     property string feedback: ""
     property var recovery: []
+    property var devices: []
+    property string catalog: ""
+    property bool deviceBusy: false
+    Connections {
+        target: bridge
+        function onDevicesReady(value) { const result = JSON.parse(value); window.devices = result.devices; window.deviceBusy = false; if (result.error) window.feedback = result.error; }
+        function onCatalogReady(value) { const result = JSON.parse(value); window.catalog = result.error || (result.name + "\nContexto: " + result.context_length + " tokens\nParâmetros suportados: " + (result.supported_parameters || []).join(", ")); }
+    }
     visible: false
     width: 960; height: 700; minimumWidth: 720; minimumHeight: 480
     title: "Definições — O Amigo"
@@ -89,6 +97,30 @@ Kirigami.ApplicationWindow {
                                     }
                                 }
                             }
+                        }
+                        ColumnLayout {
+                            visible: window.category === 0; Layout.fillWidth: true
+                            QQC2.Button { text: "Consultar capacidades deste modelo"; onClicked: { window.catalog = "A consultar…"; bridge.refreshCatalog(window.values.model); } }
+                            QQC2.Label { text: window.catalog; textFormat: Text.PlainText; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                        ColumnLayout {
+                            visible: window.category === 3; Layout.fillWidth: true
+                            Kirigami.Heading { text: "Selecionar unidades removíveis"; level: 2 }
+                            QQC2.Button { text: window.deviceBusy ? "A consultar…" : "Procurar unidades ligadas"; enabled: !window.deviceBusy; onClicked: { window.deviceBusy = true; bridge.refreshDevices(); } }
+                            Repeater {
+                                model: window.devices
+                                QQC2.CheckBox {
+                                    required property var modelData
+                                    text: (modelData.label || modelData.model || "Unidade") + " · " + (modelData.bytes / 1073741824).toFixed(1) + " GiB · " + modelData.filesystem
+                                    checked: window.values.allowed_devices.indexOf(modelData.id) >= 0
+                                    onToggled: {
+                                        const chosen = window.values.allowed_devices.filter(id => id !== modelData.id);
+                                        if (checked) chosen.push(modelData.id);
+                                        window.values.allowed_devices = chosen;
+                                    }
+                                }
+                            }
+                            QQC2.Label { text: "A seleção só é guardada ao carregar em Aplicar. Nunca permite formatar ou alterar partições."; wrapMode: Text.WordWrap; Layout.fillWidth: true; opacity: 0.7 }
                         }
                         QQC2.Label {
                             visible: window.category === 0

@@ -17,7 +17,7 @@ from amigo.migration import migrate
 
 SOURCE=Path(__file__).resolve().parents[1]
 CODE_DIRS=('amigo','qml')
-CORE_FILES=('quickask/__init__.py','quickask/core.py','quickask/vault.py','LICENSE','THIRD_PARTY.md')
+CORE_FILES=('quickask/__init__.py','quickask/core.py','quickask/vault.py','LICENSE','THIRD_PARTY.md','SOURCE_REVISION')
 
 def run(*args,check=True):
     result=subprocess.run([str(a) for a in args],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=30)
@@ -40,6 +40,13 @@ def copy_code(destination):
         target=destination/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(SOURCE/name,target)
     shutil.copytree(SOURCE/'kwin',destination/'kwin')
     shutil.copytree(SOURCE/'scripts',destination/'scripts',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+
+def source_revision():
+    value=(SOURCE/'SOURCE_REVISION').read_text().strip() if (SOURCE/'SOURCE_REVISION').exists() else ''
+    import re
+    if re.fullmatch('[0-9a-f]{40}',value):return value
+    result=subprocess.run(['git','-C',str(SOURCE),'rev-parse','HEAD'],capture_output=True,text=True)
+    return result.stdout.strip() if result.returncode==0 else None
 
 def code_id():
     digest=hashlib.sha256()
@@ -129,7 +136,7 @@ class Install:
         if migration:migrate(self.data/'quick-ask',self.root,with_key=self.activate)
         version=self.release();self.artifacts()
         state=self.start() if self.activate else {'activation':'skipped'}
-        write(self.root/'installation.json',json.dumps({'version':version,'source':str(SOURCE),'installed':True,'activated':self.activate},indent=2))
+        write(self.root/'installation.json',json.dumps({'version':version,'commit':source_revision(),'source':str(SOURCE),'installed':True,'activated':self.activate},indent=2))
         return {'version':version,'service':state,'legacy_preserved':True}
 
 def main():

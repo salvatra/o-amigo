@@ -69,6 +69,8 @@ class Agent(QObject):
         self.state['round_limit']=max(self.state['round_limit'],self.state['rounds'])+self.settings.value['max_rounds']
         self.state['search_limit']=max(self.state['search_limit'],self.state['searches'])+self.settings.value['max_searches']
         self.state['fetch_limit']=max(self.state.get('fetch_limit',0),self.state.get('fetches',0))+self.settings.value.get('max_fetches',6)
+        if self.state.get('recovery_blocked'):
+            self.state['retry_recovery']=self.state.pop('recovery_blocked')
         self.state['status']='running';self.state['error']='';self.cancel_event.clear();self.persist();self.next_round()
 
     def persist(self):
@@ -141,6 +143,8 @@ class Agent(QObject):
             result=json.loads(existing['result']) if existing['result'] else {'ok':False,'error':'Resultado incerto após interrupção. Não repetir automaticamente.'}
             self.consume_tool(result);return
         previous=self.history.previous_call(self.identifier,name,args) if name in MUTATIONS else None
+        if previous and self.state.get('retry_recovery')==self.history.fingerprint(name,args):
+            previous=None;self.state.pop('retry_recovery',None)
         self.history.begin_call(self.identifier,call['id'],name,args)
         if previous:
             result=json.loads(previous['result']) if previous['result'] else {'ok':False,'error':'Operação idêntica já iniciada; resultado incerto. Verifica a recuperação antes de repetir.'}
@@ -172,6 +176,10 @@ class Agent(QObject):
                 if action['id']==call['id']:action['status']='approval'
             self.persist();return
         self.history.finish_call(self.identifier,call['id'],result)
+        if result.get('recovery_required'):
+            self.state['recovery_blocked']=self.history.fingerprint(call['function']['name'],json.loads(call['function']['arguments']))
+            self.consume_tool(result,advance=False);self.settle_pending()
+            self.finish('paused','Não há recuperação suficiente. Nenhum original foi substituído. Ajusta a recuperação nas definições e escolhe Continuar, ou termina esta tentativa.');return
         self.consume_tool(result)
 
     def decide(self,token,allow):
@@ -189,14 +197,15 @@ class Agent(QObject):
         self.state['status']='tool';self.persist()
         self.launch_worker(self.waiting_tools,call['function']['name'],json.loads(call['function']['arguments']))
 
-    def consume_tool(self,result):
+    def consume_tool(self,result,advance=True):
         call=self.state['pending'].pop(0)
         for action in self.state['actions']:
             if action['id']==call['id']:action['status']='complete' if result.get('ok') else 'failed';action['result']=result
         content=json.dumps({'untrusted_tool_data':result},ensure_ascii=False)
         if len(content)>131072:content=json.dumps({'ok':False,'error':'Resultado excede o limite de contexto; consulta um subconjunto.'})
         self.state['messages'].append({'role':'tool','tool_call_id':call['id'],'content':content})
-        self.persist();QTimer.singleShot(0,self.next_tool)
+        self.persist()
+        if advance:QTimer.singleShot(0,self.next_tool)
 
     def settle_pending(self):
         for call in self.state.get('pending',[]):

@@ -6,6 +6,12 @@ CATEGORIES=[
  ('model','Modelo OpenRouter','text'),('simple_tokens','Tokens de resposta simples','integer'),
  ('tool_tokens','Tokens por ronda com ferramentas','integer'),('thinking_tokens','Tokens com Pensar mais','integer'),
  ('temperature','Temperatura (vazio = predefinição do modelo)','optional_number'),('top_p','Top P (vazio = predefinição do modelo)','optional_number'),
+ ('top_k','Top K (vazio = predefinição)','optional_number'),('min_p','Min P (vazio = predefinição)','optional_number'),
+ ('frequency_penalty','Penalização de frequência (vazio = predefinição)','optional_number'),
+ ('presence_penalty','Penalização de presença (vazio = predefinição)','optional_number'),
+ ('repetition_penalty','Penalização de repetição (vazio = predefinição)','optional_number'),
+ ('seed','Seed (vazio = aleatória)','optional_number'),('stop','Sequências de paragem, até quatro','list'),
+ ('reasoning_effort','Esforço ao ativar Pensar mais','choice',['auto','low','medium','high']),
  ('max_rounds','Rondas por etapa da tarefa','integer')]),
  ('Encaminhamento e custos',[
  ('routing','Seleção do fornecedor','choice',['balanced','price','throughput','latency']),
