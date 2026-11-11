@@ -16,6 +16,7 @@ Item {
     function refresh() { call("Snapshot", [], value => { stateJson = value; changed(); }); }
     function send(text, thinking) { call("Send",[text,thinking]); }
     function newConversation() { call("NewConversation"); }
+    function prepareConversation() { call("PrepareConversation"); }
     function cancel() { call("Cancel"); }
     function decide(token, allow) { call("Decide",[token,allow]); }
     function resume() { call("Continue"); }

@@ -124,3 +124,15 @@ with no messages, tasks or nonempty draft; existing message content is untouched
 rows, one history entry after multiple sends, legacy empty-entry cleanup, retained
 saved drafts and messages, filtered search/export, and an unsent draft surviving
 completion of another task. The QML reopen check also asserts the exact history.
+
+## 0.1.3 — 2026-11-11
+
+Reopening now retains the current conversation and exact unsent draft. Empty
+composers still open fresh; explicit New conversation still starts fresh. A draft
+in a never-sent conversation remains in memory and creates no history entry.
+The native popup flushes its draft on hiding, and the widget flushes on collapse
+before requesting the same draft-aware opening behavior over D-Bus.
+
+91 unit tests and the QML/bridge checks pass, covering rapid hide/reopen before the
+350ms save timer, multiline Portuguese text, unsent drafts with zero history rows,
+follow-up drafts in saved chats, empty reopen, and fresh opening after sending.

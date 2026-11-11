@@ -64,6 +64,8 @@ class Service(QObject):
     @pyqtSlot()
     def NewConversation(self):self.controller.newConversation()
     @pyqtSlot()
+    def PrepareConversation(self):self.controller.prepareConversation()
+    @pyqtSlot()
     def Cancel(self):self.controller.cancel()
     @pyqtSlot(str,bool)
     def Decide(self,token,allow):self.controller.decide(token,allow)

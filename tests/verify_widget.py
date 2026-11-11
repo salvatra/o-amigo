@@ -41,8 +41,15 @@ evaluate('send("Olá widget", false)')
 wait(lambda:len(json.loads(bridge.property('stateJson'))['messages'])==2)
 evaluate('requestHistory("Olá", 0)');wait(lambda:bool(harness.property('historyResult')))
 assert len(json.loads(harness.property('historyResult')))==1
+previous=controller.conversation
+evaluate('setDraft("Rascunho do widget")');wait(lambda:controller.draft=='Rascunho do widget')
+evaluate('prepareConversation()');QTest.qWait(50)
+assert controller.conversation==previous and controller.draft=='Rascunho do widget'
+evaluate('setDraft("")');wait(lambda:controller.draft=='')
+evaluate('prepareConversation()');wait(lambda:controller.conversation!=previous)
+assert len(controller.history.conversations())==1
 bus.unregisterService(SERVICE);wait(lambda:not bridge.property('connected'))
 errors=[w for w in warnings if any(word in w for word in ('ReferenceError','TypeError','SyntaxError','Cannot assign','Unable to assign','Binding loop'))]
 assert not errors,errors
-print(json.dumps({'passed':True,'checks':['D-Bus snapshot','push updates','send','history','missing service']}))
+print(json.dumps({'passed':True,'checks':['D-Bus snapshot','push updates','send','history','reopen keeps draft','empty reopen starts fresh','missing service']}))
 controller.close();temporary.cleanup()

@@ -11,12 +11,22 @@ PlasmoidItem {
     toolTipSubText: serviceBridge.connected ? "Perguntar ou pedir ajuda" : "Instala o serviço O Amigo"
     hideOnWindowDeactivate: !JSON.parse(serviceBridge.stateJson).pinned
     Bridge { id: serviceBridge }
-    onExpandedChanged: { if (expanded && serviceBridge.connected) serviceBridge.newConversation(); }
+    property var chatView: null
+    onExpandedChanged: {
+        if (expanded && serviceBridge.connected) serviceBridge.prepareConversation();
+        else if (!expanded && chatView) chatView.saveDraft();
+    }
     compactRepresentation: PC.ToolButton { icon.name: "help-hint"; text: "O Amigo"; onClicked: root.expanded = !root.expanded }
     fullRepresentation: Item {
         Layout.minimumWidth: 440; Layout.preferredWidth: 800
         Layout.minimumHeight: 360; Layout.preferredHeight: 560
-        ChatView { anchors.fill: parent; visible: serviceBridge.connected; bridge: serviceBridge; onHideRequested: root.expanded = false }
+        ChatView {
+            id: chatItem
+            anchors.fill: parent; visible: serviceBridge.connected; bridge: serviceBridge
+            Component.onCompleted: root.chatView = chatItem
+            Component.onDestruction: root.chatView = null
+            onHideRequested: root.expanded = false
+        }
         ColumnLayout {
             visible: !serviceBridge.connected; anchors.centerIn: parent; width: parent.width - 48; spacing: Kirigami.Units.largeSpacing
             Kirigami.Heading { text: "Falta o serviço O Amigo"; level: 2; Layout.alignment: Qt.AlignHCenter }

@@ -195,6 +195,10 @@ class Controller(QObject):
     def newConversation(self):
         self.conversation=self.history.new_draft();self.draft='';self.notice='';self.reload();self.agent.restore(self.conversation)
 
+    @pyqtSlot()
+    def prepareConversation(self):
+        if not self.draft:self.newConversation()
+
     @pyqtSlot(str,int,result=str)
     def historyPage(self,query,offset):return json.dumps(self.history.conversations(query,offset),ensure_ascii=False)
     @pyqtSlot(str,int)
@@ -236,7 +240,7 @@ class Controller(QObject):
     def setVisible(self,visible):
         opening=visible and not self.visible
         self.visible=visible
-        if opening:self.newConversation()
+        if opening:self.prepareConversation()
         self.visibilityChanged.emit(visible)
     @pyqtSlot(bool)
     def setPinned(self,value):self.pinned=value;self.changed.emit()

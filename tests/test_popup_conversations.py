@@ -14,16 +14,32 @@ class PopupConversationTests(unittest.TestCase):
         self.controller=Controller(Settings(root/'settings.json'),root/'data',demo=True)
     def tearDown(self):
         self.controller.close();self.temp.cleanup()
-    def test_reopen_is_fresh_and_old_history_and_draft_remain(self):
+    def test_reopen_preserves_draft_and_starts_fresh_after_sending(self):
         c=self.controller;c.setVisible(True);old=c.conversation
         c.send('Pergunta sintética');c.setDraft('Rascunho guardado')
         c.setVisible(True);self.assertEqual(c.conversation,old)
-        c.setVisible(False);self.assertEqual(c.conversation,old)
-        c.setVisible(True);fresh=c.conversation
-        self.assertNotEqual(fresh,old);self.assertEqual(c.rows,[]);self.assertEqual(c.draft,'')
-        self.assertEqual(len(c.history.messages(old)),2)
-        c.selectConversation(old);self.assertEqual(c.draft,'Rascunho guardado')
+        c.setVisible(False);c.setVisible(True)
+        self.assertEqual(c.conversation,old);self.assertEqual(c.draft,'Rascunho guardado')
         self.assertEqual(len(c.rows),2)
+        c.send(c.draft);self.assertEqual(c.draft,'')
+        c.setVisible(False);c.setVisible(True)
+        self.assertNotEqual(c.conversation,old);self.assertEqual(c.rows,[]);self.assertEqual(c.draft,'')
+        self.assertEqual(len(c.history.messages(old)),4)
+        c.selectConversation(old);self.assertEqual(len(c.rows),4)
+
+    def test_transient_draft_survives_popup_and_widget_reopening_without_history(self):
+        c=self.controller;c.setVisible(True);original=c.conversation
+        text='Uma pergunta por enviar\ncom ação e café.'
+        c.setDraft(text);c.setVisible(False);c.setVisible(True)
+        self.assertEqual(c.conversation,original);self.assertEqual(c.draft,text)
+        c.prepareConversation();self.assertEqual(c.conversation,original);self.assertEqual(c.draft,text)
+        self.assertEqual(c.history.conversations(),[])
+        self.assertEqual(c.history.db.execute('SELECT count(*) FROM conversations').fetchone()[0],0)
+        c.setDraft('');c.setVisible(False);c.setVisible(True)
+        self.assertNotEqual(c.conversation,original);self.assertEqual(c.draft,'')
+        c.setDraft(text);c.newConversation();self.assertEqual(c.draft,'')
+        self.assertEqual(c.history.conversations(),[])
+
     def test_reopening_keeps_inflight_task_attached_to_original_conversation(self):
         c=self.controller;c.setVisible(True);old=c.conversation;c.send('Pergunta sintética')
         task={'conversation':old,'status':'requesting','message_id':c.rows[-1]['id'],'text':'Resposta em curso','actions':[]}
@@ -44,7 +60,7 @@ class PopupConversationTests(unittest.TestCase):
         self.assertEqual(c.history.db.execute('SELECT count(*) FROM conversations').fetchone()[0],0)
         self.assertEqual(c.history.db.execute("SELECT count(*) FROM settings WHERE key LIKE 'draft:%'").fetchone()[0],0)
         self.assertEqual(json.loads(c.historyPage('',0)),[])
-        c.setVisible(True);self.assertEqual(c.draft,'')
+        c.setVisible(True);self.assertEqual(c.draft,'Ainda não enviada')
         c.send('Primeira mensagem');saved=c.conversation
         c.send('Segunda mensagem')
         self.assertEqual([row['id'] for row in c.history.conversations()],[saved])

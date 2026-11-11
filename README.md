@@ -2,7 +2,7 @@
 
 A native KDE Plasma assistant with an independent local service, a themed popup,
 an optional Plasma widget and OpenRouter. Initial target: Arch Linux with Plasma 6.
-Version **0.1.2** is the initial installable release; tested behavior and hardware
+Version **0.1.3** is the initial installable release; tested behavior and hardware
 limitations are recorded in [VALIDATION.md](VALIDATION.md). It is not published on
 KDE Store. [Guia rápido em português](UTILIZACAO.md).
 
@@ -52,7 +52,8 @@ Installing the widget alone does not grant tools or store a key in plasmashell.
 
 - Super+F12 shows/hides the popup. The middle 96 logical pixels of the top edge open it
   after a 300 ms dwell; leaving the region cancels the pending opening.
-- Each hidden-to-visible opening starts a new conversation. Earlier messages and
+- Reopening keeps the current conversation when there is unsent text. With an
+  empty composer, opening starts a new conversation. Earlier messages and
   drafts in conversations already sent stay in history. A new conversation is
   saved only when its first message is sent; opening the popup or typing alone
   does not add a history entry. A running task continues in its original conversation;
@@ -158,7 +159,7 @@ python -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen python tests/verify_ui.py
 python tests/verify_browser.py        # real HTTPS, no API key
 python tests/verify_kwin.py           # temporary native integration check
-python scripts/build_release.py --version 0.1.2 --build-arch
+python scripts/build_release.py --version 0.1.3 --build-arch
 ```
 
 Release builds require committed source and produce a reproducible source archive,

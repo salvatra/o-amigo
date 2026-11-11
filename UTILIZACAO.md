@@ -3,7 +3,8 @@
 **Super+F12** mostra ou esconde o popup. Também podes encostar o rato ao centro do bordo
 superior durante 300 ms. Não é acrescentado nenhum botão à topbar.
 
-Cada abertura começa numa conversa nova. As anteriores e os seus rascunhos ficam
+Se houver texto por enviar, reabrir recupera esse rascunho na mesma conversa.
+Sem texto por enviar, a abertura começa numa conversa nova. As anteriores e os seus rascunhos ficam
 no histórico. Uma conversa nova só é guardada depois de enviares a primeira
 mensagem; abrir o popup ou escrever sem enviar não cria entradas. Se uma tarefa ainda estiver a decorrer, continua na conversa original;
 **Ver progresso** permite voltar a ela. Só começa outra tarefa quando essa terminar.
