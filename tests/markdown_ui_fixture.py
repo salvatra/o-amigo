@@ -1,8 +1,8 @@
 """Native visual/streaming assertions against synthetic messages only."""
 import json
 import time
-from PyQt6.QtCore import QObject, QMetaObject, Qt
-from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtCore import QObject, QMetaObject, Qt, QCoreApplication, QPoint, QPointF
+from PyQt6.QtGui import QGuiApplication, QWheelEvent
 from PyQt6.QtTest import QTest
 
 SAMPLE = '''## Uma resposta mais legível
@@ -44,7 +44,7 @@ def visual_find(root, name):
 def verify_markdown(controller, root, popup, capture):
     controller.newConversation()
     controller.history.add(controller.conversation, 'user', 'Demonstração de Markdown')
-    mid = controller.history.add(controller.conversation, 'assistant', SAMPLE)
+    mid = controller.history.add(controller.conversation, 'assistant', SAMPLE, status='streaming')
     controller.reload()
     def wait_render():
         deadline=time.monotonic()+4
@@ -68,7 +68,8 @@ def verify_markdown(controller, root, popup, capture):
     cells=visual_find(popup,'markdownCell')
     assert len(cells)==9 and all(c.property('height')>0 for c in cells)
     scroll=root.findChild(QObject,'answerScroll')
-    scroll.setProperty('followTail',False);scroll.setProperty('contentY',0);QTest.qWait(30)
+    assert abs(scroll.property('contentY'))<2, 'Initial response jumped to bottom'
+    scroll.setProperty('contentY',0);QTest.qWait(30)
     capture(popup,'markdown-top')
     scroll.setProperty('contentY',300);QTest.qWait(30);capture(popup,'markdown-code')
     scroll.setProperty('contentY',scroll.property('contentHeight')-scroll.property('height'));QTest.qWait(30);capture(popup,'markdown-table')
@@ -82,10 +83,34 @@ def verify_markdown(controller, root, popup, capture):
     jump=root.findChild(QObject,'amigoScrollToEnd')
     assert jump.property('visible')
     QMetaObject.invokeMethod(jump,'clicked');QTest.qWait(30)
-    assert scroll.property('followTail')
-    controller.history.db.execute('UPDATE messages SET content=content||? WHERE id=?',('\n\nFim.',mid))
-    controller.history.db.commit();controller.reload();wait_render()
     assert abs(scroll.property('contentY')-max(0,scroll.property('contentHeight')-scroll.property('height')))<2
+    bottom_before=scroll.property('contentY')
+    # An explicit jump is one-shot, not an opt-in to automatic following.
+    controller.history.db.execute('UPDATE messages SET content=content||? WHERE id=?',('\n\nFim. '*150,mid))
+    controller.history.db.commit();controller.reload();wait_render()
+    assert abs(scroll.property('contentY')-bottom_before)<2, 'Streaming followed after manual jump'
+    assert scroll.property('contentHeight')-scroll.property('height')>bottom_before+40
+    # Completion/metadata updates must also leave a manually chosen position alone.
+    scroll.setProperty('contentY',80)
+    controller.history.db.execute("UPDATE messages SET status='complete' WHERE id=?",(mid,))
+    controller.history.db.commit();controller.reload();wait_render()
+    assert abs(scroll.property('contentY')-80)<2, 'Completed response snapped back'
+    position=scroll.mapToScene(QPointF(scroll.width()/2,min(100,scroll.height()/2)))
+    wheel=QWheelEvent(position,popup.mapToGlobal(position),QPoint(),QPoint(0,120),Qt.MouseButton.NoButton,Qt.KeyboardModifier.NoModifier,Qt.ScrollPhase.NoScrollPhase,False)
+    QCoreApplication.sendEvent(popup,wheel);QTest.qWait(200)
+    after_wheel=scroll.property('contentY')
+    assert 0<=after_wheel<80, 'Mouse wheel did not scroll the completed answer'
+    controller.changed.emit();QTest.qWait(100)
+    assert abs(scroll.property('contentY')-after_wheel)<2, 'Metadata snapped the scrolled answer back'
+    scroll.setProperty('contentY',100)
+    controller.history.add(controller.conversation,'user','Outra pergunta')
+    controller.history.add(controller.conversation,'assistant','Nova resposta. '*80)
+    controller.reload();wait_render()
+    assert abs(scroll.property('contentY')-100)<2, 'Next exchange jumped to bottom'
+    # Return to the original message for the independent theme/width checks.
+    controller.history.db.execute('DELETE FROM messages WHERE conversation=? AND id>?',(controller.conversation,mid))
+    controller.history.db.commit();controller.reload();wait_render()
+    code=visual_find(popup,'markdownCode')[0]
     # A live theme change must update highlighting without rebuilding the block.
     from PyQt6.QtQml import QQmlEngine, QQmlExpression
     def evaluate(script):
@@ -108,8 +133,8 @@ def verify_markdown(controller, root, popup, capture):
     assert len(visual_find(popup,'markdownCell'))==21
     from PyQt6.QtCore import QRectF
     old_area=root.property('available');root.setProperty('available',QRectF(0,30,480,870));QTest.qWait(150)
-    scroll.setProperty('followTail',True);scroll.setProperty('contentY',max(0,scroll.property('contentHeight')-scroll.property('height')));QTest.qWait(50);capture(popup,'markdown-narrow')
+    scroll.setProperty('contentY',max(0,scroll.property('contentHeight')-scroll.property('height')));QTest.qWait(50);capture(popup,'markdown-narrow')
     assert scroll.property('contentWidth')<=scroll.property('width')+1
     assert scroll.property('width')<450
     root.setProperty('available',old_area);QTest.qWait(50)
-    return ['native Markdown blocks','exact code and response copy','positive table geometry','stable streaming delegates','reading position retained','follow tail','live theme change','narrow viewport']
+    return ['native Markdown blocks','exact code and response copy','positive table geometry','stable streaming delegates','reading position retained','manual scrolling only','live theme change','narrow viewport']

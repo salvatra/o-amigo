@@ -15,7 +15,6 @@ Item {
     property string displayedConversation: ""
     ListModel { id: messageModel }
     function syncMessages() {
-        answerScroll.updating = true;
         if (messageModel.count > state.messages.length || (messageModel.count && state.messages.length && messageModel.get(0).messageId !== state.messages[0].id)) messageModel.clear();
         for (let i = 0; i < state.messages.length; ++i) {
             const row = state.messages[i];
@@ -25,7 +24,6 @@ Item {
                 for (const key in item) if (old[key] !== item[key]) messageModel.setProperty(i, key, item[key]);
             }
         }
-        Qt.callLater(answerScroll.settle);
     }
     Component.onCompleted: { syncMessages(); prompt.text = state.draft; displayedConversation = state.conversation; }
     signal hideRequested()
@@ -33,7 +31,6 @@ Item {
     function saveDraft() { draftTimer.stop(); bridge.setDraft(prompt.text); }
     function submit() {
         if (state.busy || !prompt.text.trim()) return;
-        answerScroll.followTail = true;
         draftTimer.stop();
         bridge.send(prompt.text, think.checked);
         prompt.text = "";
@@ -68,7 +65,6 @@ Item {
             if (oldId !== view.state.conversation) {
                 draftTimer.stop();
                 view.historyOpen = false;
-                answerScroll.followTail = true;
                 prompt.text = view.state.draft;
             }
             view.displayedConversation = view.state.conversation;
@@ -222,35 +218,14 @@ Item {
                     anchors.fill: parent
                     contentWidth: availableWidth
                     QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
-                    QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-                        id: answerBar
-                        onPressedChanged: {
-                            if (pressed) answerScroll.followTail = false;
-                            else answerScroll.followTail = answerScroll.contentY >= answerScroll.contentHeight - answerScroll.height - 40;
-                        }
-                    }
+                    QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
                     Flickable {
                         id: answerScroll
                         objectName: "answerScroll"
                         contentWidth: width; contentHeight: answerColumn.implicitHeight
                         clip: true; boundsBehavior: Flickable.StopAtBounds
-                        property bool followTail: true
-                        property bool updating: false
-                        function settle() {
-                            if (followTail) contentY = Math.max(0, contentHeight - height);
-                            updating = false;
-                        }
-                        onContentHeightChanged: Qt.callLater(settle)
-                        onContentYChanged: {
-                            if (!updating && (moving || dragging || answerBar.pressed)) followTail = contentY >= contentHeight - height - 40;
-                        }
-                        WheelHandler {
-                            onWheel: event => {
-                                if (event.angleDelta.y > 0 || event.pixelDelta.y > 0) answerScroll.followTail = false;
-                                else Qt.callLater(() => { answerScroll.followTail = answerScroll.contentY >= answerScroll.contentHeight - answerScroll.height - 40; });
-                                event.accepted = false;
-                            }
-                        }
+                        // Reading position belongs to the user. Stream and metadata
+                        // updates must never move this viewport, even at the bottom.
                     ColumnLayout {
                         id: answerColumn
                         width: answerScroll.width; spacing: Kirigami.Units.largeSpacing
@@ -318,13 +293,13 @@ Item {
                 PC.ToolButton {
                     objectName: "amigoScrollToEnd"
                     anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 8
-                    visible: !answerScroll.followTail && answerScroll.contentY < answerScroll.contentHeight - answerScroll.height - 40
+                    visible: answerScroll.contentY < answerScroll.contentHeight - answerScroll.height - 40
                     background: Rectangle {
                         radius: width / 2; color: Kirigami.Theme.backgroundColor
                         border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.25)
                     }
                     icon.name: "go-bottom"; text: "Ir para o fim"; display: QQC2.AbstractButton.IconOnly
-                    onClicked: { answerScroll.followTail = true; answerScroll.settle(); }
+                    onClicked: { answerScroll.cancelFlick(); answerScroll.contentY = Math.max(0, answerScroll.contentHeight - answerScroll.height); }
                     QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered
                 }
                 }

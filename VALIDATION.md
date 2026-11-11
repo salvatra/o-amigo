@@ -186,3 +186,17 @@ cancellation control while working and jump-to-bottom action. Native Tidal at
 200% and narrow-width captures were reviewed with synthetic messages. Existing
 draft, history, Markdown/copy and background-task checks remain in place.
 No provider, prompt, permission, credential or history-format changes.
+
+## 0.2.2 — manual response scrolling
+
+Removed automatic scrolling from message insertion, streaming layout updates and
+conversation changes in the shared popup/widget view. The native scroll area
+keeps the user's position during and after generation. The existing bottom
+button performs one explicit jump and never enables automatic following.
+
+The QML regression fixture checks initial position, fragmented streaming at a
+chosen offset, further output after a manual bottom jump, completion, wheel
+scrolling after completion, metadata refreshes and a subsequent exchange. These
+checks use synthetic messages and do not call a paid model or touch user data.
+Existing draft/history, Markdown/copy, theme, narrow-width and widget checks
+remain in place. No settings, provider or stored-conversation format changes.

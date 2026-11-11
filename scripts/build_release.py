@@ -72,7 +72,7 @@ package() {{
     return destination
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--version',default='0.2.1');parser.add_argument('--allow-dirty',action='store_true');parser.add_argument('--build-arch',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--version',default='0.2.2');parser.add_argument('--allow-dirty',action='store_true');parser.add_argument('--build-arch',action='store_true');args=parser.parse_args()
     target=build(args.version,args.allow_dirty)
     if args.build_arch:subprocess.run(['makepkg','--nodeps','--cleanbuild','--force'],cwd=target,check=True)
     print(target)

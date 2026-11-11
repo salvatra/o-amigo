@@ -40,7 +40,9 @@ Os títulos, listas, citações, tabelas e blocos de código têm apresentação
 original completo. Podes selecionar texto dentro de cada bloco. Código comprido
 e tabelas largas deslocam-se horizontalmente dentro da respetiva caixa.
 
-Ao subir na resposta, o streaming deixa de deslocar a leitura. Volta ao fundo
-para o acompanhar novamente. As cores seguem o tema KDE; imagens aparecem como
+A resposta nunca faz scroll automático, durante ou depois da geração, mesmo
+quando chegam novas mensagens. Podes deslocar a leitura livremente. **Ir para o
+fim** só desloca a resposta quando carregas no botão; não ativa acompanhamento
+automático. As cores seguem o tema KDE; imagens aparecem como
 texto alternativo, sem downloads. HTML recebido é texto literal; LaTeX e Mermaid
 não são renderizados. Não é iniciado nenhum browser para apresentar respostas.

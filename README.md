@@ -2,7 +2,7 @@
 
 A native KDE Plasma assistant with an independent local service, a themed popup,
 an optional Plasma widget and OpenRouter. Initial target: Arch Linux with Plasma 6.
-Version **0.2.1** streamlines the native chat interface; tested behavior and hardware
+Version **0.2.2** keeps response scrolling fully manual; tested behavior and hardware
 limitations are recorded in [VALIDATION.md](VALIDATION.md). It is not published on
 KDE Store. [Guia rápido em português](UTILIZACAO.md).
 
@@ -61,12 +61,13 @@ Installing the widget alone does not grant tools or store a key in plasmashell.
 - Enter sends; Shift+Enter inserts a line; Esc hides; Ctrl+N starts a conversation.
 - The prompt is above the answer, with integrated send/stop and reasoning controls.
   Empty chats have no welcome copy or permanent footer; progress and costs appear
-  only for a task. A jump-to-bottom button returns to the live response.
+  only for a task. **Ir para o fim** jumps to the bottom only when clicked.
   Native Markdown has comfortable spacing,
   proportional headings, nested lists, quotes, syntax-highlighted code with
   **Copiar código**, and tables that scroll horizontally when needed. Select text
   per block; **Copiar resposta** copies the complete original Markdown.
-  Scrolling up pauses automatic following until you return near the bottom.
+  The reading position stays under your control during and after generation,
+  including when more messages arrive. Jumping to the bottom never enables following.
   Hiding preserves drafts and active work; installation hands unsent text to the
   new process without creating an empty history entry.
 - Responses never load a browser, remote images or model-supplied HTML. Images
@@ -171,7 +172,7 @@ python -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen python tests/verify_ui.py
 python tests/verify_browser.py        # real HTTPS, no API key
 python tests/verify_kwin.py           # temporary native integration check
-python scripts/build_release.py --version 0.2.1 --build-arch
+python scripts/build_release.py --version 0.2.2 --build-arch
 ```
 
 Release builds require committed source and produce a reproducible source archive,
