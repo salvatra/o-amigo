@@ -24,9 +24,11 @@ from .integration import set_shortcut
 from .browser import Browser
 from .approval import ApprovalGate
 from .devices import Devices
+from .render_cache import Presentation
 
 def display_markdown(text):
-    # Keep user/model Markdown passive: no images, HTML elements or file resources.
+    # Legacy Snapshot.content for pre-0.2 clients only. Native 0.2 views use
+    # parsed blocks from raw content, preserving quotes and literal code.
     text=re.sub(r'!\[([^\]]*)\]\([^)]*\)',r'[imagem: \1]',text)
     text=re.sub(r'!\[([^\]]*)\]\[[^\]]*\]',r'[imagem: \1]',text)
     text=text.replace('![','[')
@@ -70,6 +72,7 @@ class Controller(QObject):
 
     def __init__(self,settings,data_root,demo=False):
         super().__init__();self.settings=settings;self.data_root=Path(data_root);self.history=History(data_root)
+        self.presentation=Presentation(self);self.presentation.changed.connect(self.changed)
         self.conversation=self.history.active();self.demo=demo;self._key='';self.validated=False;self.key_busy=False
         self.notice='';self.visible=False;self.pinned=settings.value['pinned'];self.draft='';self.rows=[];self.device_reader=None;self.catalog_reply=None
         self.vault=Vault(self,('application','o-amigo','provider','openrouter'),label='O Amigo — OpenRouter')
@@ -81,9 +84,25 @@ class Controller(QObject):
         self.agent=Agent(self.history,self.settings,self.make_tools,lambda:self._key,self)
         self.agent.changed.connect(self.changed);self.agent.finished.connect(self.completed)
         self.agent.restore(self.conversation);self.reload()
+        self.restore_composer()
         if demo:
             self._key='demo';self.validated=True;self.notice='Modo de demonstração: sem chamadas pagas nem acesso a ficheiros pessoais.'
         else:self.vault.lookup(self.key_loaded)
+
+    def restore_composer(self):
+        handoff=self.data_root/'composer-handoff.json'
+        if not handoff.exists():return
+        try:
+            import uuid
+            value=json.loads(handoff.read_text())
+            identifier=str(uuid.UUID(value['conversation']))
+            draft=value['draft']
+            if not isinstance(draft,str) or len(draft)>131072:raise ValueError('Invalid draft')
+            self.conversation=identifier;self.setDraft(draft)
+            self.reload();self.agent.restore(identifier)
+            handoff.unlink()
+        except (OSError,ValueError,KeyError,TypeError):
+            self.notice='Não foi possível recuperar o rascunho da atualização; a cópia local foi preservada.'
 
     def reset_policy(self):
         old=getattr(self,'transactions',None)
@@ -113,7 +132,8 @@ class Controller(QObject):
         for row in self.rows:
             content=row['content'];status=row['status']
             if task and row['id']==task['message_id']:content=task['text']+self.agent.round_text;status=task['status']
-            rows.append({'id':row['id'],'role':row['role'],'content':display_markdown(content),'raw':content,'status':status})
+            rows.append({'id':row['id'],'role':row['role'],'content':display_markdown(content),'raw':content,'status':status,
+                         'blocks':self.presentation.get(row['id'],content) if row['role']=='assistant' else []})
         return json.dumps({'ready':self.validated,'keyBusy':self.key_busy,'busy':self.agent.busy,'notice':self.notice,
                            'backgroundConversation':self.agent.state['conversation'] if self.agent.busy and not task and self.agent.state else '',
                            'conversation':self.conversation,'draft':self.draft,'messages':rows,'pinned':self.pinned,'browserEnabled':self.settings.value['browser_enabled'],
@@ -319,6 +339,7 @@ class Controller(QObject):
                                   array([],QMetaType.Type.QString),{},5000])
             QDBusConnection.sessionBus().asyncCall(message)
     def close(self):
+        self.presentation.close()
         if self.catalog_reply:self.catalog_reply.abort()
         if self.device_reader:self.device_reader.wait(16000)
         self.browser.close();self.transactions.close();self.history.close();self._key=''

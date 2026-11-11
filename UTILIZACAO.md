@@ -32,3 +32,15 @@ com encaminhamento equilibrado e tetos de $0,30/M de entrada e $1,20/M de saída
 
 [Instalação, recuperação e desinstalação](README.md#data-migration-and-removal) ·
 [Testes e limitações verificadas](VALIDATION.md)
+
+## Respostas em Markdown (0.2.0)
+
+Os títulos, listas, citações, tabelas e blocos de código têm apresentação nativa.
+**Copiar código** copia o conteúdo do bloco; **Copiar resposta** copia o Markdown
+original completo. Podes selecionar texto dentro de cada bloco. Código comprido
+e tabelas largas deslocam-se horizontalmente dentro da respetiva caixa.
+
+Ao subir na resposta, o streaming deixa de deslocar a leitura. Volta ao fundo
+para o acompanhar novamente. As cores seguem o tema KDE; imagens aparecem como
+texto alternativo, sem downloads. HTML recebido é texto literal; LaTeX e Mermaid
+não são renderizados. Não é iniciado nenhum browser para apresentar respostas.

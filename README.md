@@ -2,7 +2,7 @@
 
 A native KDE Plasma assistant with an independent local service, a themed popup,
 an optional Plasma widget and OpenRouter. Initial target: Arch Linux with Plasma 6.
-Version **0.1.3** is the initial installable release; tested behavior and hardware
+Version **0.2.0** adds comfortable native Markdown; tested behavior and hardware
 limitations are recorded in [VALIDATION.md](VALIDATION.md). It is not published on
 KDE Store. [Guia rápido em português](UTILIZACAO.md).
 
@@ -11,7 +11,7 @@ KDE Store. [Guia rápido em português](UTILIZACAO.md).
 Install dependencies from the configured repositories:
 
 ```sh
-sudo pacman -S --needed python python-pyqt6 python-pyqt6-webengine python-dbus \
+sudo pacman -S --needed python python-markdown-it-py syntax-highlighting python-pyqt6 python-pyqt6-webengine python-dbus \
   python-gobject python-pycups qt6-declarative kirigami libplasma kdeplasma-addons \
   kconfig kglobalaccel libsecret bubblewrap qpdf poppler man-db udisks2 cups \
   cups-pk-helper packagekit usbutils fontconfig
@@ -59,8 +59,17 @@ Installing the widget alone does not grant tools or store a key in plasmashell.
   does not add a history entry. A running task continues in its original conversation;
   **Ver progresso** returns to it, and another task can start once it finishes.
 - Enter sends; Shift+Enter inserts a line; Esc hides; Ctrl+N starts a conversation.
-- The prompt is above the answer. Markdown, sources, tool progress and copying
-  are available below. Hiding preserves drafts and active work.
+- The prompt is above the answer. Native Markdown has comfortable spacing,
+  proportional headings, nested lists, quotes, syntax-highlighted code with
+  **Copiar código**, and tables that scroll horizontally when needed. Select text
+  per block; **Copiar resposta** copies the complete original Markdown.
+  Scrolling up pauses automatic following until you return near the bottom.
+  Hiding preserves drafts and active work; installation hands unsent text to the
+  new process without creating an empty history entry.
+- Responses never load a browser, remote images or model-supplied HTML. Images
+  appear as alternative text; HTML is displayed literally. Only generated inline
+  rich text is rendered. Links open only on activation (HTTP/HTTPS). Unknown code
+  languages remain monospace. LaTeX and Mermaid are not rendered.
 - Pinning keeps the popup open on outside clicks. The gear opens a normal KDE
   settings window. **Ver browser** reveals the separate isolated browser.
 - One task runs at a time. **Interromper** requests cancellation. A privileged
@@ -159,7 +168,7 @@ python -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen python tests/verify_ui.py
 python tests/verify_browser.py        # real HTTPS, no API key
 python tests/verify_kwin.py           # temporary native integration check
-python scripts/build_release.py --version 0.1.3 --build-arch
+python scripts/build_release.py --version 0.2.0 --build-arch
 ```
 
 Release builds require committed source and produce a reproducible source archive,

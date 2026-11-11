@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
       - name: Install test dependencies
         run: >-
-          pacman -Syu --noconfirm --needed python python-pyqt6 python-pyqt6-webengine
+          pacman -Syu --noconfirm --needed python python-markdown-it-py syntax-highlighting python-pyqt6 python-pyqt6-webengine
           python-dbus python-gobject python-pycups qt6-declarative kirigami libplasma
           kdeplasma-addons kconfig kglobalaccel libsecret bubblewrap qpdf poppler
           man-db udisks2 cups cups-pk-helper packagekit usbutils fontconfig git gitleaks
@@ -26,6 +26,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Check native QML interface
         run: QT_QUICK_BACKEND=software python tests/verify_ui.py
+      - name: Check widget D-Bus bridge
+        run: dbus-run-session -- python tests/verify_widget.py
       - name: Check isolated Chromium interactions
         run: |
           # This disposable Ubuntu-hosted runner otherwise denies Arch's

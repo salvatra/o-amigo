@@ -14,12 +14,17 @@ Item {
     property string displayedConversation: ""
     ListModel { id: messageModel }
     function syncMessages() {
+        answerScroll.updating = true;
         if (messageModel.count > state.messages.length || (messageModel.count && state.messages.length && messageModel.get(0).messageId !== state.messages[0].id)) messageModel.clear();
         for (let i = 0; i < state.messages.length; ++i) {
             const row = state.messages[i];
-            const item = {messageId: row.id, messageRole: row.role, markdown: row.content, rawText: row.raw, messageStatus: row.status};
-            if (i >= messageModel.count) messageModel.append(item); else messageModel.set(i, item);
+            const item = {messageId: row.id, messageRole: row.role, markdown: row.content, rawText: row.raw, messageStatus: row.status, presentation: JSON.stringify(row.blocks || (row.raw ? [{id:"0", kind:"plain", text:row.raw, indent:0, quote:0, marker:""}] : []))};
+            if (i >= messageModel.count) messageModel.append(item); else {
+                const old = messageModel.get(i);
+                for (const key in item) if (old[key] !== item[key]) messageModel.setProperty(i, key, item[key]);
+            }
         }
+        Qt.callLater(answerScroll.settle);
     }
     Component.onCompleted: { syncMessages(); prompt.text = state.draft; displayedConversation = state.conversation; }
     signal hideRequested()
@@ -36,6 +41,7 @@ Item {
             if (oldId !== view.state.conversation) {
                 draftTimer.stop();
                 view.historyOpen = false;
+                answerScroll.followTail = true;
                 prompt.text = view.state.draft;
             }
             view.displayedConversation = view.state.conversation;
@@ -113,7 +119,7 @@ Item {
                         Keys.onPressed: event => {
                             if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !(event.modifiers & Qt.ShiftModifier)) {
                                 event.accepted = true;
-                                if (!view.state.busy && text.trim()) { draftTimer.stop(); bridge.send(text, think.checked); text = ""; }
+                                if (!view.state.busy && text.trim()) { answerScroll.followTail = true; draftTimer.stop(); bridge.send(text, think.checked); text = ""; }
                             } else if (event.key === Qt.Key_Escape) { event.accepted = true; view.hideRequested(); }
                         }
                     }
@@ -124,7 +130,7 @@ Item {
                     PC.Button { visible: !!view.state.task && !!view.state.task.recovery_blocked; text: "Configurar recuperação"; icon.name: "configure"; onClicked: bridge.openSettings() }
                     PC.Button { visible: !!view.state.task && ["paused", "failed", "interrupted"].indexOf(view.state.task.status) >= 0; text: "Continuar"; icon.name: "media-playback-start"; enabled: !view.state.busy; onClicked: bridge.resume() }
                     PC.Button { visible: view.state.busy; text: "Interromper"; icon.name: "process-stop"; onClicked: bridge.cancel() }
-                    PC.Button { visible: !view.state.busy; text: "Enviar"; icon.name: "mail-send"; enabled: prompt.text.trim().length > 0; onClicked: { draftTimer.stop(); bridge.send(prompt.text, think.checked); prompt.text = ""; view.focusComposer(); } }
+                    PC.Button { visible: !view.state.busy; text: "Enviar"; icon.name: "mail-send"; enabled: prompt.text.trim().length > 0; onClicked: { answerScroll.followTail = true; draftTimer.stop(); bridge.send(prompt.text, think.checked); prompt.text = ""; view.focusComposer(); } }
                 }
                 RowLayout {
                     visible: !!view.state.backgroundConversation
@@ -146,12 +152,43 @@ Item {
                     }
                 }
                 Kirigami.Separator { Layout.fillWidth: true }
-                PC.ScrollView {
+                QQC2.ScrollView {
                     id: answers
                     Layout.fillWidth: true; Layout.fillHeight: true
                     contentWidth: availableWidth
+                    QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                    QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+                        id: answerBar
+                        onPressedChanged: {
+                            if (pressed) answerScroll.followTail = false;
+                            else answerScroll.followTail = answerScroll.contentY >= answerScroll.contentHeight - answerScroll.height - 40;
+                        }
+                    }
+                    Flickable {
+                        id: answerScroll
+                        objectName: "answerScroll"
+                        contentWidth: width; contentHeight: answerColumn.implicitHeight
+                        clip: true; boundsBehavior: Flickable.StopAtBounds
+                        property bool followTail: true
+                        property bool updating: false
+                        function settle() {
+                            if (followTail) contentY = Math.max(0, contentHeight - height);
+                            updating = false;
+                        }
+                        onContentHeightChanged: Qt.callLater(settle)
+                        onContentYChanged: {
+                            if (!updating && (moving || dragging || answerBar.pressed)) followTail = contentY >= contentHeight - height - 40;
+                        }
+                        WheelHandler {
+                            onWheel: event => {
+                                if (event.angleDelta.y > 0 || event.pixelDelta.y > 0) answerScroll.followTail = false;
+                                else Qt.callLater(() => { answerScroll.followTail = answerScroll.contentY >= answerScroll.contentHeight - answerScroll.height - 40; });
+                                event.accepted = false;
+                            }
+                        }
                     ColumnLayout {
-                        width: answers.availableWidth; spacing: Kirigami.Units.largeSpacing
+                        id: answerColumn
+                        width: answerScroll.width; spacing: Kirigami.Units.largeSpacing
                         PC.Label { visible: view.state.messages.length === 0; text: "Uma pergunta rápida. Ou uma ajuda no computador.\n\nEscreve em cima para começar."; opacity: 0.6; wrapMode: Text.WordWrap; Layout.fillWidth: true; Layout.topMargin: 24 }
                         Repeater {
                             model: messageModel
@@ -160,13 +197,21 @@ Item {
                                 required property string markdown
                                 required property string rawText
                                 required property string messageStatus
+                                required property string presentation
                                 property var modelData: ({role: messageRole, content: markdown, raw: rawText, status: messageStatus})
                                 Layout.fillWidth: true; spacing: 2
                                 RowLayout {
                                     PC.Label { text: modelData.role === "user" ? "Tu" : "O Amigo"; font.bold: true; opacity: 0.7; Layout.fillWidth: true }
                                     PC.ToolButton { visible: modelData.role === "assistant" && modelData.raw.length > 0; icon.name: "edit-copy"; text: "Copiar resposta"; display: QQC2.AbstractButton.IconOnly; onClicked: bridge.copy(modelData.raw); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
                                 }
-                                PC.TextArea { Layout.fillWidth: true; text: modelData.content; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; textFormat: modelData.role === "assistant" ? TextEdit.MarkdownText : TextEdit.PlainText; background: null; onLinkActivated: link => bridge.openUrl(link) }
+                                MarkdownView {
+                                    visible: messageRole === "assistant"
+                                    Layout.fillWidth: true; Layout.topMargin: 4; Layout.bottomMargin: 8
+                                    blocksJson: presentation
+                                    onCopyRequested: text => bridge.copy(text)
+                                    onLinkActivated: url => bridge.openUrl(url)
+                                }
+                                PC.TextArea { visible: messageRole !== "assistant"; Layout.fillWidth: true; text: rawText; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText; background: null }
                                 PC.Label { visible: ["failed", "interrupted", "paused"].indexOf(modelData.status) >= 0; text: modelData.status === "failed" ? "Resposta falhada" : modelData.status === "paused" ? "Progresso guardado" : "Resposta interrompida"; opacity: 0.65; font.pointSize: Kirigami.Theme.smallFont.pointSize }
                             }
                         }
@@ -184,6 +229,7 @@ Item {
                             PC.ToolButton { required property var modelData; text: modelData.title; icon.name: "internet-web-browser"; Layout.fillWidth: true; onClicked: bridge.openUrl(modelData.url) }
                         }
                     }
+                }
                 }
                 PC.Label { visible: !!view.state.task && !!view.state.task.error; text: view.state.task ? view.state.task.error : ""; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 RowLayout {

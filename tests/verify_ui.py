@@ -10,7 +10,7 @@ import sys
 import tempfile
 import traceback
 import faulthandler
-faulthandler.dump_traceback_later(15,exit=True)
+faulthandler.dump_traceback_later(40,exit=True)
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from PyQt6.QtCore import QObject,QTimer,QUrl,Qt,qInstallMessageHandler
 from PyQt6.QtGui import QGuiApplication
@@ -20,14 +20,18 @@ from PyQt6.QtTest import QTest
 from amigo.app import Service
 from amigo.controller import Controller
 from amigo.settings import Settings
+from markdown_ui_fixture import verify_markdown
 
-parser=argparse.ArgumentParser();parser.add_argument('--capture-dir',type=Path);args=parser.parse_args()
+parser=argparse.ArgumentParser();parser.add_argument('--capture-dir',type=Path);parser.add_argument('--markdown-only',action='store_true');args=parser.parse_args()
 os.umask(0o077);warnings=[]
 qInstallMessageHandler(lambda kind,context,message:warnings.append(message))
 app=QGuiApplication([]);app.setDesktopFileName('org.kde.oamigo');app.setQuitOnLastWindowClosed(False)
 temporary=tempfile.TemporaryDirectory();base=Path(temporary.name)
 controller=Controller(Settings(base/'settings.json'),base/'data',demo=True)
-service=Service(controller);engine=QQmlApplicationEngine();engine.rootContext().setContextProperty('controller',controller)
+service=Service(controller)
+# A visual fixture must not focus the separately installed application via KWin.
+controller.visibilityChanged.disconnect(service.visibility)
+engine=QQmlApplicationEngine();engine.rootContext().setContextProperty('controller',controller)
 engine.load(QUrl.fromLocalFile(str(Path(__file__).resolve().parents[1]/'qml/Main.qml')))
 if not engine.rootObjects():print(json.dumps({'errors':warnings}));raise SystemExit(1)
 root=engine.rootObjects()[0];outcome={'passed':False}
@@ -43,6 +47,13 @@ def verify():
         popup=root.findChild(QQuickWindow,'amigoPopup');composer=root.findChild(QObject,'amigoComposer')
         assert popup is not None and composer is not None
         assert controller.visible
+        if args.markdown_only:
+            controller.setPinned(True)
+            checks=verify_markdown(controller,root,popup,capture)
+            problems=[w for w in warnings if any(word in w for word in ('ReferenceError','TypeError','SyntaxError','Cannot assign','Unable to assign','Binding loop'))]
+            assert not problems,problems
+            outcome.update(passed=True,checks=checks,qml_errors=problems)
+            return
         composer.setProperty('text','Teste de resposta');QTest.keyClick(popup,Qt.Key.Key_Return);QTest.qWait(100)
         assert len(controller.history.messages(controller.conversation))==2
         capture(popup,'popup-response')
@@ -67,10 +78,12 @@ def verify():
         for index in range(7):
             settings.setProperty('category',index);QTest.qWait(50)
             if index in (0,3,6):capture(settings,'settings-'+str(index))
-        settings.hide();controller.validated=False;controller.changed.emit();service.Show();QTest.qWait(100);capture(popup,'account-form')
+        settings.hide();controller.setPinned(True);service.Show();QTest.qWait(150)
+        markdown_checks=verify_markdown(controller,root,popup,capture)
+        controller.validated=False;controller.changed.emit();service.Show();QTest.qWait(100);capture(popup,'account-form')
         problems=[w for w in warnings if any(word in w for word in ('ReferenceError','TypeError','SyntaxError','Cannot assign','Unable to assign','Binding loop','is not defined'))]
         assert not problems,problems
-        outcome.update(passed=True,checks=['native popup','Enter sends','Shift+Enter newline','Esc hides','fresh conversation without draft', 'unsent draft restored without history entry', 'old messages and draft retained', 'visible activation preserves current conversation','settings categories','account form'],qml_errors=problems)
+        outcome.update(passed=True,checks=['native popup','Enter sends','Shift+Enter newline','Esc hides','fresh conversation without draft', 'unsent draft restored without history entry', 'old messages and draft retained', 'visible activation preserves current conversation','settings categories','account form']+markdown_checks,qml_errors=problems)
     except Exception:
         outcome['error']=traceback.format_exc();outcome['warnings']=warnings
     finally:app.exit(0)

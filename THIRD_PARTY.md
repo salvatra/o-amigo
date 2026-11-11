@@ -11,6 +11,8 @@ does not bundle Qt, Chromium, KDE, fonts or their binary libraries.
 | Qt 6 / Qt Quick | LGPLv3, GPLv3 or Qt commercial license, depending on component |
 | Qt WebEngine / Chromium | Qt licensing plus Chromium's third-party notices |
 | KDE Plasma / Kirigami | LGPL family; consult the installed component's notices |
+| markdown-it-py / mdurl | MIT |
+| KSyntaxHighlighting | MIT; syntax definitions and themes have their own notices |
 | Bubblewrap | LGPL-2.1-or-later |
 | PackageKit | GPL-2.0-or-later |
 | python-pycups | GPL-2.0-or-later |

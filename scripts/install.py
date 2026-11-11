@@ -102,7 +102,14 @@ class Install:
         self.cfg('kwinrc','Plugins','o-amigoEnabled','true')
     def has_owner(self):return run('qdbus6','org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus.NameHasOwner','org.kde.OAmigo')=='true'
     def start(self):
-        if self.has_owner():run('qdbus6','org.kde.OAmigo','/OAmigo','org.kde.OAmigo.Quit',check=False)
+        if self.has_owner():
+            # Hide first so QML flushes its debounce timer. Keep transient drafts
+            # outside SQLite: upgrades must not create empty history entries.
+            run('qdbus6','org.kde.OAmigo','/OAmigo','org.kde.OAmigo.Hide')
+            snapshot=json.loads(run('qdbus6','org.kde.OAmigo','/OAmigo','org.kde.OAmigo.Snapshot'))
+            if snapshot.get('busy'):raise RuntimeError('Uma tarefa começou durante a instalação; não foi interrompida.')
+            write(self.root/'composer-handoff.json',json.dumps({k:snapshot[k] for k in ('conversation','draft')},ensure_ascii=False))
+            run('qdbus6','org.kde.OAmigo','/OAmigo','org.kde.OAmigo.Quit',check=False)
         deadline=time.monotonic()+5
         while time.monotonic()<deadline:
             if not self.has_owner():break

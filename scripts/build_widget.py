@@ -12,7 +12,8 @@ def build(destination):
     with tempfile.TemporaryDirectory(prefix='o-amigo-widget-') as directory:
         staged=Path(directory)/'widget';shutil.copytree(ROOT/'widget',staged)
         shared=staged/'contents/ui/shared';shared.mkdir()
-        shutil.copy2(ROOT/'qml/ChatView.qml',shared/'ChatView.qml')
+        for name in ['ChatView.qml', 'MarkdownView.qml', 'MarkdownBlock.qml', 'MarkdownCode.qml', 'MarkdownTable.qml']:
+            shutil.copy2(ROOT/'qml'/name,shared/name)
         with zipfile.ZipFile(destination,'w',compression=zipfile.ZIP_DEFLATED) as archive:
             for file in sorted(staged.rglob('*')):
                 if file.is_file():archive.write(file,file.relative_to(staged))

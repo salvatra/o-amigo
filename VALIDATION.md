@@ -136,3 +136,37 @@ before requesting the same draft-aware opening behavior over D-Bus.
 91 unit tests and the QML/bridge checks pass, covering rapid hide/reopen before the
 350ms save timer, multiline Portuguese text, unsent drafts with zero history rows,
 follow-up drafts in saved chats, empty reopen, and fresh opening after sending.
+
+## 0.2.0 — 2026-11-11
+
+Native comfortable Markdown is shared by popup and widget. markdown-it-py parses
+with HTML disabled; only escaped, allowlisted inline rich text is generated.
+Images become alt text, code remains literal, and link activation is HTTP/HTTPS
+only. Tables and code scroll locally. No browser is started for presentation.
+Original message content and the SQLite conversation format are unchanged.
+
+102 unit tests cover Portuguese, headings, nested lists, quotes, tables, inline
+formatting, literal HTML, passive image/link handling, every prefix of a
+fragmented Markdown response, exact fenced code, cached/latest streaming
+revisions, fallback after renderer failure, custom prompt preservation, and
+upgrade handoff of both transient and saved-conversation drafts. Existing
+conversation/background-task and installation tests remain green.
+
+The QML fixture verifies exact clipboard content, real table geometry, stable
+code delegates while streaming, retained reading position, follow-at-bottom,
+light/dark syntax-theme changes, and narrow widths with long code/wide tables.
+Native Wayland captures were visually checked with Tidal and Breeze at 200%;
+all messages are synthetic. The widget bridge verifies the same presentation
+blocks over D-Bus. No paid model request was needed for this display change.
+
+A synthetic 19.5 kB / 600-block response took 26.8 ms to parse on the test machine;
+queuing its background render took 0.07 ms and cached requests averaged 0.059 ms.
+Only changed messages are reparsed, and QML updates changed block roles instead
+of replacing the conversation. Rendering runs only when needed, with no idle
+polling or resident browser. `tests/benchmark_markdown.py` reproduces the test.
+
+`tests/verify_ui.py --markdown-only --capture-dir /tmp/o-amigo-demo` checks the
+synthetic native display independently of the settings-window tests. Offscreen
+CI also runs the complete popup/draft/settings suite. Runtime measurements and
+the exact installed source pin are recorded by the desktop integration after
+release installation.

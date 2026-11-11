@@ -9,6 +9,12 @@ class ProtocolTests(unittest.TestCase):
    self.assertEqual(body['provider']['max_price'],{'prompt':.3,'completion':1.2})
    self.assertNotIn('sort',body['provider'])
    self.assertEqual(body['model'],'deepseek/deepseek-v4.1-flash-1017')
+ def test_formatting_guidance_preserves_custom_prompt(self):
+  custom=DEFAULTS|{'system_prompt':'Instrução personalizada de teste.'}
+  prompt=request(custom,[])['messages'][0]['content']
+  self.assertTrue(prompt.startswith(custom['system_prompt']))
+  self.assertIn('Markdown quando ajudar',prompt)
+  self.assertIn('Data e hora de Lisboa',prompt)
  def test_fragmented_calls(self):
   a=Assembly()
   for chunk in [

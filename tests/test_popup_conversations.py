@@ -14,6 +14,24 @@ class PopupConversationTests(unittest.TestCase):
         self.controller=Controller(Settings(root/'settings.json'),root/'data',demo=True)
     def tearDown(self):
         self.controller.close();self.temp.cleanup()
+    def test_upgrade_handoff_restores_transient_draft_without_history(self):
+        c=self.controller;c.newConversation();identifier=c.conversation
+        path=c.data_root/'composer-handoff.json'
+        path.write_text(json.dumps({'conversation':identifier,'draft':'Não perder < & >\n café'}))
+        c.newConversation();c.restore_composer()
+        self.assertEqual(c.conversation,identifier)
+        self.assertEqual(c.draft,'Não perder < & >\n café')
+        self.assertFalse(path.exists());self.assertEqual(c.history.conversations(),[])
+        self.assertEqual(c.history.db.execute('SELECT count(*) FROM conversations').fetchone()[0],0)
+
+    def test_upgrade_handoff_preserves_sent_conversation_and_draft(self):
+        c=self.controller;c.send('Pergunta');identifier=c.conversation
+        (c.data_root/'composer-handoff.json').write_text(json.dumps({'conversation':identifier,'draft':'Próxima pergunta'}))
+        c.newConversation();c.restore_composer()
+        self.assertEqual(c.conversation,identifier);self.assertEqual(c.draft,'Próxima pergunta')
+        self.assertEqual(len(c.rows),2)
+        self.assertEqual(c.history.setting('draft:'+identifier),'Próxima pergunta')
+
     def test_reopen_preserves_draft_and_starts_fresh_after_sending(self):
         c=self.controller;c.setVisible(True);old=c.conversation
         c.send('Pergunta sintética');c.setDraft('Rascunho guardado')

@@ -13,7 +13,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from scripts.build_widget import build as build_widget
 
 ROOT=Path(__file__).resolve().parents[1]
-DEPENDS=['python','python-pyqt6','python-pyqt6-webengine','python-dbus','python-gobject','python-pycups',
+DEPENDS=['python','python-markdown-it-py','syntax-highlighting','python-pyqt6','python-pyqt6-webengine','python-dbus','python-gobject','python-pycups',
          'qt6-declarative','kirigami','libplasma','kdeplasma-addons','kconfig','kglobalaccel','libsecret','bubblewrap',
          'qpdf','poppler','man-db','udisks2','cups','cups-pk-helper','packagekit','usbutils','fontconfig']
 
@@ -72,7 +72,7 @@ package() {{
     return destination
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--version',default='0.1.3');parser.add_argument('--allow-dirty',action='store_true');parser.add_argument('--build-arch',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--version',default='0.2.0');parser.add_argument('--allow-dirty',action='store_true');parser.add_argument('--build-arch',action='store_true');args=parser.parse_args()
     target=build(args.version,args.allow_dirty)
     if args.build_arch:subprocess.run(['makepkg','--nodeps','--cleanbuild','--force'],cwd=target,check=True)
     print(target)

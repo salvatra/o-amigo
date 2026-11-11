@@ -46,6 +46,7 @@ wait(lambda:bridge.property('connected'))
 wait(lambda:json.loads(bridge.property('stateJson'))['ready'])
 evaluate('send("Olá widget", false)')
 wait(lambda:len(json.loads(bridge.property('stateJson'))['messages'])==2)
+wait(lambda:any(b.get('html') for b in json.loads(bridge.property('stateJson'))['messages'][-1].get('blocks',[])))
 evaluate('requestHistory("Olá", 0)');wait(lambda:bool(harness.property('historyResult')))
 assert len(json.loads(harness.property('historyResult')))==1
 previous=controller.conversation
@@ -58,5 +59,5 @@ assert len(controller.history.conversations())==1
 bus.unregisterService(SERVICE);wait(lambda:not bridge.property('connected'))
 errors=[w for w in warnings if any(word in w for word in ('ReferenceError','TypeError','SyntaxError','Cannot assign','Unable to assign','Binding loop'))]
 assert not errors,errors
-print(json.dumps({'passed':True,'checks':['D-Bus snapshot','push updates','send','history','reopen keeps draft','empty reopen starts fresh','missing service']}))
+print(json.dumps({'passed':True,'checks':['D-Bus snapshot','rendered Markdown blocks','push updates','send','history','reopen keeps draft','empty reopen starts fresh','missing service']}))
 controller.close();temporary.cleanup()
