@@ -112,3 +112,15 @@ conversation. A second task is still blocked until the first finishes.
 88 automated tests pass, including new conversation lifecycle/in-flight ownership
 checks. The QML interaction check covers a fresh composer after reopening, retained
 history/drafts, and activation without resetting an already visible conversation.
+
+## 0.1.2 — 2026-11-11
+
+Unsent composers now have only an in-memory identity and draft. The first user
+message creates the persistent conversation. History search, pagination and export
+include only conversations with a sent user message. Startup removes legacy entries
+with no messages, tasks or nonempty draft; existing message content is untouched.
+
+90 tests pass, including repeated unsent openings with zero conversation/draft
+rows, one history entry after multiple sends, legacy empty-entry cleanup, retained
+saved drafts and messages, filtered search/export, and an unsent draft surviving
+completion of another task. The QML reopen check also asserts the exact history.

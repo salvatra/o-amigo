@@ -3,6 +3,7 @@ import hashlib
 import json
 import time
 import uuid
+from datetime import datetime
 from quickask.core import Store
 
 class History(Store):
@@ -28,11 +29,37 @@ class History(Store):
                 state['status']='interrupted';state['error']='A aplicação foi interrompida. As operações não foram repetidas.'
                 self.db.execute('UPDATE tasks SET state=? WHERE id=?',(json.dumps(state),row['id']))
         self.db.commit()
+        # Retire empty entries created by older popup versions. Never remove
+        # messages, task records or a nonempty saved draft during this cleanup.
+        empty=[row['id'] for row in self.db.execute('''SELECT id FROM conversations c
+            WHERE NOT EXISTS(SELECT 1 FROM messages m WHERE m.conversation=c.id)
+              AND NOT EXISTS(SELECT 1 FROM tasks t WHERE t.conversation=c.id)
+              AND NOT EXISTS(SELECT 1 FROM settings s WHERE s.key='draft:'||c.id AND s.value!='')''')]
+        with self.db:
+            self.db.executemany('DELETE FROM settings WHERE key=?',[('draft:'+cid,) for cid in empty])
+            self.db.executemany('DELETE FROM conversations WHERE id=?',[(cid,) for cid in empty])
+
+    def new_draft(self):
+        """An unsent composer has an identity, but no persistent conversation."""
+        return str(uuid.uuid4())
+
+    def active(self):
+        cid=self.setting('active')
+        return cid if self.db.execute('SELECT 1 FROM conversations WHERE id=?',(cid,)).fetchone() else self.new_draft()
+
+    def add(self,cid,role,content,status='complete'):
+        if role=='user':
+            self.db.execute('INSERT OR IGNORE INTO conversations VALUES (?,?,?)',
+                            (cid,'Nova conversa',datetime.now().isoformat()))
+            self.db.execute("INSERT OR REPLACE INTO settings VALUES ('active',?)",(cid,))
+        return super().add(cid,role,content,status)
 
     def conversations(self,query='',offset=0,limit=30):
         limit=max(1,min(int(limit),100));offset=max(0,int(offset));needle=query.casefold()
-        rows=self.db.execute('''SELECT * FROM conversations c WHERE ?='' OR instr(casefold(c.title),?)>0
-             OR EXISTS(SELECT 1 FROM messages m WHERE m.conversation=c.id AND instr(casefold(m.content),?)>0)
+        rows=self.db.execute('''SELECT * FROM conversations c
+             WHERE EXISTS(SELECT 1 FROM messages sent WHERE sent.conversation=c.id AND sent.role='user')
+             AND (?='' OR instr(casefold(c.title),?)>0
+             OR EXISTS(SELECT 1 FROM messages m WHERE m.conversation=c.id AND instr(casefold(m.content),?)>0))
              ORDER BY updated DESC LIMIT ? OFFSET ?''',(needle,needle,needle,limit,offset)).fetchall()
         return [dict(row) for row in rows]
 

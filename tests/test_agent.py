@@ -46,7 +46,7 @@ class AgentTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.history=History(self.root/'data')
         self.settings=Settings(self.root/'settings.json');self.settings.value['tools_enabled']=True
-        self.conversation=self.history.active();self.tools=FakeTools()
+        self.conversation=self.history.new();self.tools=FakeTools()
     def tearDown(self):self.history.close();self.tmp.cleanup()
     def agent(self,responses):
         self.stream=FakeStream(responses)

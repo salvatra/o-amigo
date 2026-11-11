@@ -35,8 +35,38 @@ class PopupConversationTests(unittest.TestCase):
         self.assertEqual(state['messages'],[])
         c.selectConversation(old);self.assertEqual(c.conversation,old);self.assertIs(c.agent.state,task)
         self.assertEqual(json.loads(c.stateJson)['backgroundConversation'],'')
-        c.selectConversation(fresh);task['status']='complete';c.completed()
-        self.assertEqual(c.conversation,fresh);self.assertEqual(c.rows,[])
+        c.newConversation();fresh=c.conversation;c.setDraft('A próxima pergunta');task['status']='complete';c.completed()
+        self.assertEqual(c.conversation,fresh);self.assertEqual(c.rows,[]);self.assertEqual(c.draft,'A próxima pergunta')
+    def test_unsent_openings_do_not_create_history_or_draft_rows(self):
+        c=self.controller
+        for _ in range(8):
+            c.setVisible(True);c.setDraft('Ainda não enviada');c.send('   ');c.setVisible(False)
+        self.assertEqual(c.history.db.execute('SELECT count(*) FROM conversations').fetchone()[0],0)
+        self.assertEqual(c.history.db.execute("SELECT count(*) FROM settings WHERE key LIKE 'draft:%'").fetchone()[0],0)
+        self.assertEqual(json.loads(c.historyPage('',0)),[])
+        c.setVisible(True);self.assertEqual(c.draft,'')
+        c.send('Primeira mensagem');saved=c.conversation
+        c.send('Segunda mensagem')
+        self.assertEqual([row['id'] for row in c.history.conversations()],[saved])
+        self.assertEqual(len(c.history.messages(saved)),4)
+        c.setVisible(False);c.setVisible(True)
+        self.assertEqual([row['id'] for row in c.history.conversations()],[saved])
+        self.assertEqual(c.history.db.execute('SELECT count(*) FROM conversations').fetchone()[0],1)
+
+    def test_legacy_empty_entries_are_cleaned_without_losing_messages_or_drafts(self):
+        from amigo.history import History
+        c=self.controller;empty=c.history.new();draft=c.history.new()
+        c.history.set_setting('draft:'+draft,'Rascunho antigo a preservar')
+        sent=c.history.new();c.history.add(sent,'user','Mensagem guardada')
+        c.history.close();c.history=History(c.data_root)
+        self.assertFalse(c.history.db.execute('SELECT 1 FROM conversations WHERE id=?',(empty,)).fetchone())
+        self.assertEqual(c.history.setting('draft:'+draft),'Rascunho antigo a preservar')
+        self.assertEqual([row['id'] for row in c.history.conversations()],[sent])
+        self.assertEqual(c.history.conversations('Nova conversa'),[])
+        self.assertEqual([row['id'] for row in c.history.conversations('guardada')],[sent])
+        exported=Path(self.temp.name)/'export.json';c.exportHistory(str(exported))
+        self.assertEqual([row['id'] for row in json.loads(exported.read_text())],[sent])
+
     def test_default_shortcut_requires_super(self):
         self.assertEqual(DEFAULTS['shortcut'],'Meta+F12')
 

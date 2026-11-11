@@ -102,7 +102,9 @@ class Controller(QObject):
     def reload(self):
         rows=self.history.db.execute('SELECT * FROM messages WHERE conversation=? ORDER BY id DESC LIMIT 100',(self.conversation,)).fetchall()
         self.rows=[dict(row)|{'metadata':json.loads(row['metadata'])} for row in reversed(rows)]
-        self.draft=self.history.setting('draft:'+self.conversation,'');self.changed.emit()
+        persisted=self.history.db.execute('SELECT 1 FROM conversations WHERE id=?',(self.conversation,)).fetchone()
+        if persisted:self.draft=self.history.setting('draft:'+self.conversation,'')
+        self.changed.emit()
 
     @pyqtProperty(str,notify=changed)
     def stateJson(self):
@@ -170,6 +172,7 @@ class Controller(QObject):
 
     @pyqtSlot(str,bool)
     def send(self,prompt,thinking=False):
+        if not prompt.strip():return
         if not self.validated:self.notice='Valida primeiro a ligação ao OpenRouter.';self.changed.emit();return
         if self.demo:
             self.history.add(self.conversation,'user',prompt)
@@ -182,14 +185,15 @@ class Controller(QObject):
     @pyqtSlot(str)
     def setDraft(self,text):
         self.draft=text
-        self.history.set_setting('draft:'+self.conversation,text[:131072])
+        if self.history.db.execute('SELECT 1 FROM conversations WHERE id=?',(self.conversation,)).fetchone():
+            self.history.set_setting('draft:'+self.conversation,text[:131072])
 
     @pyqtSlot(str,bool)
     def decide(self,token,allow):self.agent.decide(token,allow)
 
     @pyqtSlot()
     def newConversation(self):
-        self.conversation=self.history.new();self.notice='';self.reload();self.agent.restore(self.conversation)
+        self.conversation=self.history.new_draft();self.draft='';self.notice='';self.reload();self.agent.restore(self.conversation)
 
     @pyqtSlot(str,int,result=str)
     def historyPage(self,query,offset):return json.dumps(self.history.conversations(query,offset),ensure_ascii=False)
@@ -205,7 +209,7 @@ class Controller(QObject):
     def deleteConversation(self,identifier):
         if self.agent.busy:return
         self.history.delete(identifier)
-        if identifier==self.conversation:self.conversation=self.history.active();self.agent.restore(self.conversation)
+        if identifier==self.conversation:self.conversation=self.history.active();self.draft='';self.agent.restore(self.conversation)
         self.reload()
 
     @pyqtSlot()
@@ -292,7 +296,7 @@ class Controller(QObject):
         try:
             target=Path(path).expanduser()
             if not target.is_absolute() or target.exists():return 'Escolhe um novo ficheiro com caminho absoluto.'
-            data=[dict(row)|{'messages':self.history.messages(row['id'])} for row in self.history.db.execute('SELECT * FROM conversations ORDER BY updated')]
+            data=[dict(row)|{'messages':self.history.messages(row['id'])} for row in self.history.db.execute("SELECT * FROM conversations c WHERE EXISTS(SELECT 1 FROM messages m WHERE m.conversation=c.id AND m.role='user') ORDER BY updated")]
             with target.open('x',encoding='utf-8') as file:json.dump(data,file,ensure_ascii=False,indent=2)
             target.chmod(0o600);return 'Histórico exportado.'
         except (ValueError,OSError):return 'Não foi possível exportar o histórico.'
