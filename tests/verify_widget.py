@@ -1,5 +1,6 @@
 """Exercise the actual QML D-Bus widget bridge against a synthetic service."""
 import json
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -10,7 +11,8 @@ from PyQt6.QtDBus import QDBusConnection
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine,QQmlExpression
 from PyQt6.QtTest import QTest
-from amigo.app import Service,SERVICE,OBJECT
+from amigo.app import Service,OBJECT
+SERVICE="org.kde.OAmigo.WidgetTest"
 from amigo.controller import Controller
 from amigo.settings import Settings
 
@@ -19,7 +21,12 @@ temporary=tempfile.TemporaryDirectory();root=Path(temporary.name)
 controller=Controller(Settings(root/'settings.json'),root/'data',demo=True);service=Service(controller)
 bus=QDBusConnection.sessionBus();assert bus.registerService(SERVICE)
 bus.registerObject(OBJECT,service,QDBusConnection.RegisterOption.ExportAllSlots|QDBusConnection.RegisterOption.ExportAllSignals)
-engine=QQmlApplicationEngine();directory=Path(__file__).resolve().parents[1]/'widget/contents/ui'
+engine=QQmlApplicationEngine();directory=root/'ui';directory.mkdir()
+source=(Path(__file__).resolve().parents[1]/'widget/contents/ui/Bridge.qml').read_text()
+# A fixture-only bus name prevents missing-service checks from auto-starting the
+# user's installed assistant, even if this test runs on the real session bus.
+source=re.sub(r'\b(service|watchedService):\s*"org.kde.OAmigo"',lambda match:match[1]+': "'+SERVICE+'"',source)
+(directory/'Bridge.qml').write_text(source)
 engine.loadData(('''import QtQuick
 import "'''+directory.as_uri()+'''"
 Item { id: test; property alias bridge: backend; property string historyResult: ""
