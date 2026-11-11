@@ -47,6 +47,10 @@ def verify():
         popup=root.findChild(QQuickWindow,'amigoPopup');composer=root.findChild(QObject,'amigoComposer')
         assert popup is not None and composer is not None
         assert controller.visible
+        capture(popup,'popup-empty')
+        assert not root.findChild(QObject,'amigoTaskStatus').property('visible')
+        assert not root.findChild(QObject,'amigoSend').property('enabled')
+        composer.setProperty('text','Uma pergunta por enviar…');QTest.qWait(30);capture(popup,'popup-draft');composer.setProperty('text','')
         if args.markdown_only:
             controller.setPinned(True)
             checks=verify_markdown(controller,root,popup,capture)
@@ -80,6 +84,16 @@ def verify():
             if index in (0,3,6):capture(settings,'settings-'+str(index))
         settings.hide();controller.setPinned(True);service.Show();QTest.qWait(150)
         markdown_checks=verify_markdown(controller,root,popup,capture)
+        # Contextual controls must keep cancellation and incomplete costs visible.
+        controller.agent.state={'conversation':controller.conversation,'message_id':-1,'text':'','status':'requesting','providers':[], 'sources':[], 'actions':[], 'known_cost':0,'unknown_cost_rounds':0,'elapsed':0}
+        controller.changed.emit();QTest.qWait(50)
+        assert root.findChild(QObject,'amigoTaskStatus').property('visible')
+        assert root.findChild(QObject,'amigoSend').property('text')=='Interromper'
+        assert root.findChild(QObject,'amigoSend').property('enabled')
+        capture(popup,'popup-working')
+        controller.agent.state.update(status='complete',providers=['Fornecedor'],elapsed=1.2,known_cost=.000123,unknown_cost_rounds=1)
+        controller.changed.emit();QTest.qWait(50);capture(popup,'popup-partial-cost')
+        controller.agent.state=None
         controller.validated=False;controller.changed.emit();service.Show();QTest.qWait(100);capture(popup,'account-form')
         problems=[w for w in warnings if any(word in w for word in ('ReferenceError','TypeError','SyntaxError','Cannot assign','Unable to assign','Binding loop','is not defined'))]
         assert not problems,problems

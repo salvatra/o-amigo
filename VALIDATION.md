@@ -170,3 +170,19 @@ synthetic native display independently of the settings-window tests. Offscreen
 CI also runs the complete popup/draft/settings suite. Runtime measurements and
 the exact installed source pin are recorded by the desktop integration after
 release installation.
+
+## 0.2.1 — streamlined chat interface
+
+Removed empty-state promotional copy, the permanent OpenRouter footer and
+repeated sender headings. The composer integrates send/stop and reasoning
+controls, with accessible labels and tooltips. User messages are visually
+distinct; copy actions remain beside responses. Task progress, approval/error
+messages and API-reported costs remain contextual; incomplete costs are marked.
+History focuses search and hides pagination when there is no further page.
+A jump-to-bottom action resumes automatic streaming follow.
+
+The existing native QML fixture additionally checks the empty-state controls,
+cancellation control while working and jump-to-bottom action. Native Tidal at
+200% and narrow-width captures were reviewed with synthetic messages. Existing
+draft, history, Markdown/copy and background-task checks remain in place.
+No provider, prompt, permission, credential or history-format changes.

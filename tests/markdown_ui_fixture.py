@@ -79,7 +79,10 @@ def verify_markdown(controller, root, popup, capture):
         controller.history.db.commit();controller.reload();wait_render()
         assert visual_find(popup,'markdownCode')[0] is code, 'Streaming recreated existing code'
         assert abs(scroll.property('contentY')-before)<2, 'Reading position moved'
-    scroll.setProperty('followTail',True)
+    jump=root.findChild(QObject,'amigoScrollToEnd')
+    assert jump.property('visible')
+    QMetaObject.invokeMethod(jump,'clicked');QTest.qWait(30)
+    assert scroll.property('followTail')
     controller.history.db.execute('UPDATE messages SET content=content||? WHERE id=?',('\n\nFim.',mid))
     controller.history.db.commit();controller.reload();wait_render()
     assert abs(scroll.property('contentY')-max(0,scroll.property('contentHeight')-scroll.property('height')))<2

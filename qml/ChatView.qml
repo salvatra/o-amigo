@@ -10,6 +10,7 @@ Item {
     property var state: JSON.parse(bridge.stateJson)
     property bool historyOpen: false
     property var historyRows: []
+    property bool historyHasMore: false
     property string deleteId: ""
     property string displayedConversation: ""
     ListModel { id: messageModel }
@@ -30,10 +31,36 @@ Item {
     signal hideRequested()
     function focusComposer() { if (state.ready) prompt.forceActiveFocus(); else key.forceActiveFocus(); }
     function saveDraft() { draftTimer.stop(); bridge.setDraft(prompt.text); }
+    function submit() {
+        if (state.busy || !prompt.text.trim()) return;
+        answerScroll.followTail = true;
+        draftTimer.stop();
+        bridge.send(prompt.text, think.checked);
+        prompt.text = "";
+        focusComposer();
+    }
+    function toggleHistory() {
+        historyOpen = !historyOpen;
+        if (historyOpen) { refreshHistory(); Qt.callLater(() => historySearch.forceActiveFocus()); }
+        else focusComposer();
+    }
+    function taskDetails() {
+        const task = state.task;
+        if (!task) return "";
+        const details = [];
+        if (task.providers && task.providers.length) details.push(task.providers.join(" · "));
+        if (task.elapsed) details.push(Number(task.elapsed).toFixed(1) + " s");
+        if (task.unknown_cost_rounds) {
+            details.push(task.known_cost > 0 ? "$" + Number(task.known_cost).toFixed(6) + " + ?" : "Custo indisponível");
+        } else if (!state.busy || task.known_cost > 0) {
+            details.push("$" + Number(task.known_cost).toFixed(6) + (state.busy ? " parcial" : ""));
+        }
+        return details.join("  ·  ");
+    }
     function refreshHistory() { bridge.requestHistory(historySearch.text, 0); }
     Connections {
         target: bridge
-        function onHistoryReady(text, append) { view.historyRows = append ? view.historyRows.concat(JSON.parse(text)) : JSON.parse(text); }
+        function onHistoryReady(text, append) { const rows = JSON.parse(text); view.historyRows = append ? view.historyRows.concat(rows) : rows; view.historyHasMore = rows.length === 30; }
         function onChanged() {
             const oldId = view.displayedConversation;
             view.state = JSON.parse(bridge.stateJson);
@@ -56,10 +83,10 @@ Item {
         spacing: Kirigami.Units.smallSpacing
         RowLayout {
             visible: view.state.ready
-            Kirigami.Heading { text: "O Amigo"; level: 2; Layout.fillWidth: true }
+            Kirigami.Heading { text: "O Amigo"; level: 3; Layout.fillWidth: true }
             PC.ToolButton { visible: !!view.state.browserEnabled; icon.name: "internet-web-browser"; text: "Ver browser"; display: QQC2.AbstractButton.IconOnly; onClicked: bridge.showBrowser(); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "document-new"; text: "Nova conversa"; display: QQC2.AbstractButton.IconOnly; enabled: !view.state.busy; onClicked: { view.saveDraft(); bridge.newConversation(); view.focusComposer(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
-            PC.ToolButton { icon.name: "view-history"; text: "Histórico"; display: QQC2.AbstractButton.IconOnly; checked: view.historyOpen; checkable: true; onClicked: { view.historyOpen = !view.historyOpen; if (view.historyOpen) view.refreshHistory(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
+            PC.ToolButton { icon.name: "view-history"; text: "Histórico"; display: QQC2.AbstractButton.IconOnly; checked: view.historyOpen; checkable: true; onClicked: view.toggleHistory(); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "window-pin"; text: "Fixar popup"; display: QQC2.AbstractButton.IconOnly; checkable: true; checked: view.state.pinned; onClicked: bridge.setPinned(checked); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "configure"; text: "Definições"; display: QQC2.AbstractButton.IconOnly; onClicked: bridge.openSettings(); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
         }
@@ -69,10 +96,8 @@ Item {
             Item {
                 ColumnLayout {
                     anchors.centerIn: parent; width: Math.min(parent.width - 48, 460); spacing: Kirigami.Units.largeSpacing
-                    Kirigami.Icon { source: "help-hint"; Layout.alignment: Qt.AlignHCenter; implicitWidth: 48; implicitHeight: 48 }
-                    Kirigami.Heading { text: "Olá. Sou O Amigo."; level: 1; Layout.alignment: Qt.AlignHCenter }
-                    PC.Label { text: "Cola a chave do OpenRouter para começar. Fica guardada no KWallet deste computador."; wrapMode: Text.WordWrap; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                    PC.TextField { id: key; visible: !bridge.externalClient; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: "Chave do OpenRouter"; enabled: !view.state.keyBusy; onAccepted: { bridge.saveKey(text); text = ""; } }
+                    Kirigami.Heading { text: "O Amigo"; level: 1; Layout.alignment: Qt.AlignHCenter }
+                    PC.TextField { id: key; visible: !bridge.externalClient; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: "Chave do OpenRouter"; Accessible.description: "Guardada no KWallet deste computador"; enabled: !view.state.keyBusy; onAccepted: { bridge.saveKey(text); text = ""; } }
                     PC.Button { visible: !bridge.externalClient; text: view.state.keyBusy ? "A testar…" : "Guardar e testar"; icon.name: "wallet-open"; enabled: !view.state.keyBusy && key.text.length > 0; Layout.alignment: Qt.AlignHCenter; onClicked: { bridge.saveKey(key.text); key.text = ""; } }
                     PC.Button { visible: !bridge.externalClient; text: "Testar chave já guardada"; flat: true; enabled: !view.state.keyBusy; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.testKey() }
                     PC.Button { visible: bridge.externalClient; text: "Configurar conta no O Amigo"; icon.name: "configure"; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.openSettings() }
@@ -82,7 +107,7 @@ Item {
             ColumnLayout {
                 RowLayout {
                     PC.TextField { id: historySearch; Layout.fillWidth: true; placeholderText: "Pesquisar conversas…"; onTextEdited: searchTimer.restart() }
-                    PC.Button { text: "Voltar"; onClicked: view.historyOpen = false }
+                    PC.ToolButton { text: "Voltar"; icon.name: "go-previous"; display: QQC2.AbstractButton.IconOnly; onClicked: view.toggleHistory(); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
                 }
                 Timer { id: searchTimer; interval: 250; onTriggered: view.refreshHistory() }
                 ListView {
@@ -104,38 +129,77 @@ Item {
                     PC.Button { text: "Cancelar"; onClicked: view.deleteId = "" }
                     PC.Button { text: "Eliminar"; onClicked: { bridge.deleteConversation(view.deleteId); view.deleteId = ""; view.refreshHistory(); } }
                 }
-                PC.Button { text: "Carregar mais"; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.requestHistory(historySearch.text, view.historyRows.length) }
+                PC.Button { visible: view.historyHasMore; text: "Carregar mais"; Layout.alignment: Qt.AlignHCenter; onClicked: bridge.requestHistory(historySearch.text, view.historyRows.length) }
             }
             ColumnLayout {
                 spacing: Kirigami.Units.smallSpacing
-                PC.ScrollView {
-                    Layout.fillWidth: true; Layout.preferredHeight: Math.min(130, Math.max(82, prompt.implicitHeight + 4))
-                    PC.TextArea {
-                        id: prompt
-                        objectName: "amigoComposer"
-                        placeholderText: "O que queres saber ou fazer?"
-                        wrapMode: TextEdit.Wrap; selectByMouse: true
-                        onTextChanged: draftTimer.restart()
-                        Keys.onPressed: event => {
-                            if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !(event.modifiers & Qt.ShiftModifier)) {
-                                event.accepted = true;
-                                if (!view.state.busy && text.trim()) { answerScroll.followTail = true; draftTimer.stop(); bridge.send(text, think.checked); text = ""; }
-                            } else if (event.key === Qt.Key_Escape) { event.accepted = true; view.hideRequested(); }
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: composerLayout.implicitHeight + 16
+                    radius: 8
+                    color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.035)
+                    border.color: prompt.activeFocus ? view.Kirigami.Theme.focusColor : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.18)
+                    ColumnLayout {
+                        id: composerLayout
+                        x: 8; y: 8; width: parent.width - 16
+                        spacing: 4
+                        QQC2.ScrollView {
+                            Layout.fillWidth: true; Layout.preferredHeight: Math.min(120, Math.max(44, prompt.implicitHeight))
+                            QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                            PC.TextArea {
+                                id: prompt
+                                objectName: "amigoComposer"
+                                placeholderText: ""
+                                color: view.Kirigami.Theme.textColor
+                                PC.Label {
+                                    visible: !prompt.text.length && !prompt.preeditText.length
+                                    x: prompt.leftPadding; y: prompt.topPadding
+                                    text: "Pergunta…"; color: view.Kirigami.Theme.textColor
+                                    opacity: 0.55; font: prompt.font
+                                    Accessible.ignored: true
+                                }
+                                Accessible.name: "Mensagem"
+                                wrapMode: TextEdit.Wrap; selectByMouse: true
+                                background: null
+                                onTextChanged: draftTimer.restart()
+                                Keys.onPressed: event => {
+                                    if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !(event.modifiers & Qt.ShiftModifier)) {
+                                        event.accepted = true;
+                                        view.submit();
+                                    } else if (event.key === Qt.Key_Escape) { event.accepted = true; view.hideRequested(); }
+                                }
+                            }
+                        }
+                        RowLayout {
+                            PC.ToolButton {
+                                id: think; text: "Pensar mais"; icon.name: "tools-wizard"
+                                checkable: true; enabled: !view.state.busy
+                                QQC2.ToolTip.text: "Ativar raciocínio mais aprofundado"
+                                QQC2.ToolTip.visible: hovered
+                            }
+                            Item { Layout.fillWidth: true }
+                            PC.Button {
+                                objectName: "amigoSend"
+                                text: view.state.busy ? "Interromper" : "Enviar"
+                                icon.name: view.state.busy ? "process-stop" : "go-up"
+                                display: QQC2.AbstractButton.IconOnly
+                                enabled: view.state.busy || prompt.text.trim().length > 0
+                                onClicked: { if (view.state.busy) bridge.cancel(); else view.submit(); }
+                                QQC2.ToolTip.text: view.state.busy ? "Interromper" : "Enviar (Enter)"
+                                QQC2.ToolTip.visible: hovered
+                            }
                         }
                     }
                 }
                 RowLayout {
-                    PC.CheckBox { id: think; text: "Pensar mais"; enabled: !view.state.busy }
-                    Item { Layout.fillWidth: true }
-                    PC.Button { visible: !!view.state.task && !!view.state.task.recovery_blocked; text: "Configurar recuperação"; icon.name: "configure"; onClicked: bridge.openSettings() }
-                    PC.Button { visible: !!view.state.task && ["paused", "failed", "interrupted"].indexOf(view.state.task.status) >= 0; text: "Continuar"; icon.name: "media-playback-start"; enabled: !view.state.busy; onClicked: bridge.resume() }
-                    PC.Button { visible: view.state.busy; text: "Interromper"; icon.name: "process-stop"; onClicked: bridge.cancel() }
-                    PC.Button { visible: !view.state.busy; text: "Enviar"; icon.name: "mail-send"; enabled: prompt.text.trim().length > 0; onClicked: { answerScroll.followTail = true; draftTimer.stop(); bridge.send(prompt.text, think.checked); prompt.text = ""; view.focusComposer(); } }
+                    visible: !!view.state.task && (!!view.state.task.recovery_blocked || ["paused", "failed", "interrupted"].indexOf(view.state.task.status) >= 0)
+                    PC.Button { visible: !!view.state.task && !!view.state.task.recovery_blocked; text: "Configurar recuperação"; icon.name: "configure"; onClicked: bridge.openSettings(); Layout.fillWidth: true }
+                    PC.Button { text: "Continuar"; icon.name: "media-playback-start"; enabled: !view.state.busy; onClicked: bridge.resume() }
                 }
                 RowLayout {
                     visible: !!view.state.backgroundConversation
                     Layout.fillWidth: true
-                    PC.Label { text: "A conversa anterior continua em curso."; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    PC.Label { text: "Tarefa em segundo plano"; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                     PC.Button { text: "Ver progresso"; onClicked: { view.saveDraft(); bridge.selectConversation(view.state.backgroundConversation); } }
                 }
                 ColumnLayout {
@@ -151,10 +215,11 @@ Item {
                         PC.Button { text: "Autorizar esta operação"; icon.name: "dialog-ok"; onClicked: bridge.decide(view.state.approval.token, true) }
                     }
                 }
-                Kirigami.Separator { Layout.fillWidth: true }
+                Item {
+                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.topMargin: Kirigami.Units.smallSpacing
                 QQC2.ScrollView {
                     id: answers
-                    Layout.fillWidth: true; Layout.fillHeight: true
+                    anchors.fill: parent
                     contentWidth: availableWidth
                     QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
                     QQC2.ScrollBar.vertical: QQC2.ScrollBar {
@@ -189,7 +254,6 @@ Item {
                     ColumnLayout {
                         id: answerColumn
                         width: answerScroll.width; spacing: Kirigami.Units.largeSpacing
-                        PC.Label { visible: view.state.messages.length === 0; text: "Uma pergunta rápida. Ou uma ajuda no computador.\n\nEscreve em cima para começar."; opacity: 0.6; wrapMode: Text.WordWrap; Layout.fillWidth: true; Layout.topMargin: 24 }
                         Repeater {
                             model: messageModel
                             ColumnLayout {
@@ -199,11 +263,7 @@ Item {
                                 required property string messageStatus
                                 required property string presentation
                                 property var modelData: ({role: messageRole, content: markdown, raw: rawText, status: messageStatus})
-                                Layout.fillWidth: true; spacing: 2
-                                RowLayout {
-                                    PC.Label { text: modelData.role === "user" ? "Tu" : "O Amigo"; font.bold: true; opacity: 0.7; Layout.fillWidth: true }
-                                    PC.ToolButton { visible: modelData.role === "assistant" && modelData.raw.length > 0; icon.name: "edit-copy"; text: "Copiar resposta"; display: QQC2.AbstractButton.IconOnly; onClicked: bridge.copy(modelData.raw); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
-                                }
+                                Layout.fillWidth: true; Layout.minimumWidth: answerScroll.width; spacing: 2
                                 MarkdownView {
                                     visible: messageRole === "assistant"
                                     Layout.fillWidth: true; Layout.topMargin: 4; Layout.bottomMargin: 8
@@ -211,8 +271,32 @@ Item {
                                     onCopyRequested: text => bridge.copy(text)
                                     onLinkActivated: url => bridge.openUrl(url)
                                 }
-                                PC.TextArea { visible: messageRole !== "assistant"; Layout.fillWidth: true; text: rawText; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; textFormat: TextEdit.PlainText; background: null }
-                                PC.Label { visible: ["failed", "interrupted", "paused"].indexOf(modelData.status) >= 0; text: modelData.status === "failed" ? "Resposta falhada" : modelData.status === "paused" ? "Progresso guardado" : "Resposta interrompida"; opacity: 0.65; font.pointSize: Kirigami.Theme.smallFont.pointSize }
+                                Rectangle {
+                                    visible: messageRole !== "assistant"
+                                    Layout.alignment: Qt.AlignRight
+                                    Layout.preferredWidth: Math.min(answerScroll.width * 0.86, Math.max(80, userText.implicitWidth + 20))
+                                    implicitHeight: userText.implicitHeight + 16
+                                    radius: 8
+                                    color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.06)
+                                    PC.TextArea {
+                                        id: userText
+                                        x: 10; y: 8; width: parent.width - 20
+                                        text: rawText; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap
+                                        textFormat: TextEdit.PlainText; background: null; padding: 0
+                                        Accessible.name: "A tua mensagem"
+                                    }
+                                }
+                                RowLayout {
+                                    visible: messageRole === "assistant"
+                                    PC.ToolButton {
+                                        visible: rawText.length > 0; icon.name: "edit-copy"; text: "Copiar resposta"
+                                        display: QQC2.AbstractButton.IconOnly
+                                        onClicked: bridge.copy(rawText)
+                                        QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered
+                                    }
+                                    PC.Label { visible: ["failed", "interrupted", "paused"].indexOf(messageStatus) >= 0; text: messageStatus === "failed" ? "Resposta falhada" : messageStatus === "paused" ? "Progresso guardado" : "Resposta interrompida"; opacity: 0.65; font.pointSize: Kirigami.Theme.smallFont.pointSize }
+                                    Item { Layout.fillWidth: true }
+                                }
                             }
                         }
                         Repeater {
@@ -231,12 +315,37 @@ Item {
                     }
                 }
                 }
+                PC.ToolButton {
+                    objectName: "amigoScrollToEnd"
+                    anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 8
+                    visible: !answerScroll.followTail && answerScroll.contentY < answerScroll.contentHeight - answerScroll.height - 40
+                    background: Rectangle {
+                        radius: width / 2; color: Kirigami.Theme.backgroundColor
+                        border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.25)
+                    }
+                    icon.name: "go-bottom"; text: "Ir para o fim"; display: QQC2.AbstractButton.IconOnly
+                    onClicked: { answerScroll.followTail = true; answerScroll.settle(); }
+                    QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered
+                }
+                }
                 PC.Label { visible: !!view.state.task && !!view.state.task.error; text: view.state.task ? view.state.task.error : ""; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 RowLayout {
-                    PC.BusyIndicator { visible: view.state.busy; running: visible; implicitWidth: 18; implicitHeight: 18 }
+                    objectName: "amigoTaskStatus"
+                    visible: !!view.state.task
+                    PC.BusyIndicator { visible: view.state.busy; running: visible; implicitWidth: 16; implicitHeight: 16 }
                     PC.Label {
-                        Layout.fillWidth: true; elide: Text.ElideRight; opacity: 0.6; font.pointSize: Kirigami.Theme.smallFont.pointSize
-                        text: view.state.task ? (view.state.task.providers.join(" · ") + " · " + Number(view.state.task.elapsed || 0).toFixed(1) + " s   $" + Number(view.state.task.known_cost).toFixed(6) + (view.state.task.unknown_cost_rounds ? " conhecidos · custo restante indisponível" : " comunicado pela API")) : "OpenRouter · os ficheiros só são consultados quando pedidos"
+                        visible: view.state.busy
+                        text: view.state.approval ? "A aguardar confirmação" : view.state.task && view.state.task.status === "tool" ? "A executar…" : "A responder…"
+                        opacity: 0.7; font: Kirigami.Theme.smallFont
+                    }
+                    Item { Layout.fillWidth: true }
+                    PC.Label {
+                        Layout.fillWidth: true; horizontalAlignment: Text.AlignRight
+                        elide: Text.ElideLeft; opacity: 0.6; font: Kirigami.Theme.smallFont
+                        text: view.taskDetails()
+                        QQC2.ToolTip.text: view.taskDetails() + "\nCusto comunicado pela API; ? indica uma parte indisponível."
+                        QQC2.ToolTip.visible: statusHover.hovered
+                        HoverHandler { id: statusHover }
                     }
                 }
             }

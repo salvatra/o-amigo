@@ -4,7 +4,7 @@
     "Name": "O Amigo",
     "Description": "Native assistant powered by the separately installed O Amigo service",
     "Icon": "help-hint",
-    "Version": "0.2.0",
+    "Version": "0.2.1",
     "License": "MIT",
     "Website": "https://github.com/salvatra/o-amigo",
     "Authors": [
