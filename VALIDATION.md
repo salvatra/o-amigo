@@ -99,3 +99,16 @@ optional widget uses Plasma's own containment popup.
 
 Keys, personal conversations, screenshots of real data and runtime journals are
 not included in this repository or release assets. Source scans run before pushes.
+
+## 0.1.1 — 2026-11-11
+
+Each popup opening starts a fresh conversation; previous messages and drafts stay
+in history. Re-activating an already visible popup preserves its current chat.
+The default shortcut is now Super+F12 (`Meta+F12` in KDE configuration). Running
+tasks remain attached to the original conversation and are accessible through
+history or the progress button; they are neither cancelled nor moved to the new
+conversation. A second task is still blocked until the first finishes.
+
+88 automated tests pass, including new conversation lifecycle/in-flight ownership
+checks. The QML interaction check covers a fresh composer after reopening, retained
+history/drafts, and activation without resetting an already visible conversation.

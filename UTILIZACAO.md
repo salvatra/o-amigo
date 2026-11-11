@@ -1,7 +1,11 @@
 # O Amigo — utilização rápida
 
-**F12** mostra ou esconde o popup. Também podes encostar o rato ao centro do bordo
+**Super+F12** mostra ou esconde o popup. Também podes encostar o rato ao centro do bordo
 superior durante 300 ms. Não é acrescentado nenhum botão à topbar.
+
+Cada abertura começa numa conversa nova. As anteriores e os seus rascunhos ficam
+no histórico. Se uma tarefa ainda estiver a decorrer, continua na conversa original;
+**Ver progresso** permite voltar a ela. Só começa outra tarefa quando essa terminar.
 
 Escreve em cima e carrega em **Enter**. **Shift+Enter** cria uma linha, **Esc**
 esconde e **Ctrl+N** começa outra conversa. Podes esconder o popup enquanto trabalha.

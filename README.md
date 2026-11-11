@@ -2,7 +2,7 @@
 
 A native KDE Plasma assistant with an independent local service, a themed popup,
 an optional Plasma widget and OpenRouter. Initial target: Arch Linux with Plasma 6.
-Version **0.1.0** is the initial installable release; tested behavior and hardware
+Version **0.1.1** is the initial installable release; tested behavior and hardware
 limitations are recorded in [VALIDATION.md](VALIDATION.md). It is not published on
 KDE Store. [Guia rápido em português](UTILIZACAO.md).
 
@@ -31,7 +31,7 @@ D-Bus activation, KDE autostart, one KWin script and one popup-specific window
 rule. Existing shortcuts and other hot corners are preserved. A conflicting
 shortcut is reported rather than reassigned. No button is added to the panel.
 
-Open **O Amigo** from the menu or press **F12**. Paste an OpenRouter key and select
+Open **O Amigo** from the menu or press **Super+F12**. Paste an OpenRouter key and select
 **Guardar e testar**. The key is stored in the desktop's unlocked Secret Service
 (KWallet on KDE). Choose authorized folders and enable desired capabilities in
 the settings window. Public defaults disable local tools, web search and browser
@@ -50,8 +50,11 @@ Installing the widget alone does not grant tools or store a key in plasmashell.
 
 ## Use
 
-- F12 shows/hides the popup. The middle 96 logical pixels of the top edge open it
+- Super+F12 shows/hides the popup. The middle 96 logical pixels of the top edge open it
   after a 300 ms dwell; leaving the region cancels the pending opening.
+- Each hidden-to-visible opening starts a new conversation. Earlier messages and
+  drafts stay in history. A running task continues in its original conversation;
+  **Ver progresso** returns to it, and another task can start once it finishes.
 - Enter sends; Shift+Enter inserts a line; Esc hides; Ctrl+N starts a conversation.
 - The prompt is above the answer. Markdown, sources, tool progress and copying
   are available below. Hiding preserves drafts and active work.
@@ -153,7 +156,7 @@ python -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen python tests/verify_ui.py
 python tests/verify_browser.py        # real HTTPS, no API key
 python tests/verify_kwin.py           # temporary native integration check
-python scripts/build_release.py --version 0.1.0 --build-arch
+python scripts/build_release.py --version 0.1.1 --build-arch
 ```
 
 Release builds require committed source and produce a reproducible source archive,

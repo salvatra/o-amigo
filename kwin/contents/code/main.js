@@ -74,7 +74,7 @@ workspace.windowRemoved.connect(window => {
 workspace.cursorPosChanged.connect(pointerChanged);
 remember(workspace.activeWindow);
 for (const window of workspace.stackingOrder) attach(window);
-registerShortcut("O Amigo Toggle","O Amigo: abrir / esconder","F12",() => {
+registerShortcut("O Amigo Toggle","O Amigo: abrir / esconder","Meta+F12",() => {
     remember(workspace.activeWindow); targetOutput = workspace.activeScreen;
     const area = workspace.clientArea(KWin.PlacementArea,targetOutput,workspace.currentDesktop);
     callDBus(service,path,iface,"ToggleAt",Math.round(area.x),Math.round(area.y),Math.round(area.width),Math.round(area.height),visible => { if (visible) focus(); else restore(); });

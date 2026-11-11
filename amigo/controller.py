@@ -113,6 +113,7 @@ class Controller(QObject):
             if task and row['id']==task['message_id']:content=task['text']+self.agent.round_text;status=task['status']
             rows.append({'id':row['id'],'role':row['role'],'content':display_markdown(content),'raw':content,'status':status})
         return json.dumps({'ready':self.validated,'keyBusy':self.key_busy,'busy':self.agent.busy,'notice':self.notice,
+                           'backgroundConversation':self.agent.state['conversation'] if self.agent.busy and not task and self.agent.state else '',
                            'conversation':self.conversation,'draft':self.draft,'messages':rows,'pinned':self.pinned,'browserEnabled':self.settings.value['browser_enabled'],
                            'task':{k:task.get(k) for k in ('status','error','rounds','searches','known_cost','unknown_cost_rounds','sources','providers','elapsed','recovery_blocked')} if task else None,
                            'approval':(task['approval']|{'summary':approval_text(task['approval']['plan'])}) if task and task.get('approval') else None,
@@ -188,7 +189,6 @@ class Controller(QObject):
 
     @pyqtSlot()
     def newConversation(self):
-        if self.agent.busy:self.notice='Termina ou interrompe a tarefa em curso antes de iniciar outra.';self.changed.emit();return
         self.conversation=self.history.new();self.agent.restore(self.conversation);self.notice='';self.reload()
 
     @pyqtSlot(str,int,result=str)
@@ -198,7 +198,6 @@ class Controller(QObject):
 
     @pyqtSlot(str)
     def selectConversation(self,identifier):
-        if self.agent.busy:return
         if not self.history.db.execute('SELECT id FROM conversations WHERE id=?',(identifier,)).fetchone():return
         self.conversation=identifier;self.history.set_setting('active',identifier);self.agent.restore(identifier);self.reload()
 
@@ -230,7 +229,11 @@ class Controller(QObject):
     @pyqtSlot()
     def hide(self):self.hideRequested.emit()
     @pyqtSlot(bool)
-    def setVisible(self,visible):self.visible=visible;self.visibilityChanged.emit(visible)
+    def setVisible(self,visible):
+        opening=visible and not self.visible
+        self.visible=visible
+        if opening:self.newConversation()
+        self.visibilityChanged.emit(visible)
     @pyqtSlot(bool)
     def setPinned(self,value):self.pinned=value;self.changed.emit()
     @pyqtSlot()

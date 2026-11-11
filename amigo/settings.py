@@ -17,7 +17,7 @@ DEFAULTS = {
  'protected_folders':[], 'allowed_removable':[], 'allowed_devices':[], 'disabled_tools':[],
  'search_engine':'parallel', 'search_mode':'auto', 'search_results':5,
  'allowed_domains':[], 'excluded_domains':[], 'browser_enabled':False,
- 'width':800, 'height':560, 'shortcut':'F12', 'hotspot_enabled':True,
+ 'width':800, 'height':560, 'shortcut':'Meta+F12', 'hotspot_enabled':True,
  'hotspot_width':96, 'hotspot_delay':300, 'pinned':False,
  'backup_days':7, 'backup_bytes':2147483648, 'browser_idle_seconds':90,
  'animations':True, 'notifications':True,

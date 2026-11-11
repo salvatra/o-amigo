@@ -30,7 +30,7 @@ Item {
         flags: Qt.Tool | Qt.FramelessWindowHint
         backgroundHints: PlasmaCore.Dialog.StandardBackground
         hideOnWindowDeactivate: !chat.state.pinned
-        onVisibleChanged: { pendingPlacement = visible; controller.setVisible(visible); }
+        onVisibleChanged: { pendingPlacement = visible; if (!visible) chat.saveDraft(); controller.setVisible(visible); }
         onFrameSwapped: {
             if (pendingPlacement) {
                 pendingPlacement = false;

@@ -48,8 +48,13 @@ def verify():
         capture(popup,'popup-response')
         composer.setProperty('text','Primeira linha');QTest.keyClick(popup,Qt.Key.Key_Return,Qt.KeyboardModifier.ShiftModifier);QTest.qWait(50)
         assert '\n' in composer.property('text')
+        previous=controller.conversation
         QTest.keyClick(popup,Qt.Key.Key_Escape);QTest.qWait(50);assert not controller.visible
-        service.Show();QTest.qWait(100);assert 'Primeira linha' in composer.property('text')
+        service.Show();QTest.qWait(100)
+        assert controller.conversation!=previous and composer.property('text')==''
+        assert len(controller.history.messages(previous))==2
+        controller.selectConversation(previous);QTest.qWait(50);assert 'Primeira linha' in composer.property('text')
+        current=controller.conversation;service.Show();QTest.qWait(50);assert controller.conversation==current
         controller.openSettings();QTest.qWait(200)
         settings=root.findChild(QQuickWindow,'amigoSettings');assert settings and settings.isVisible()
         for index in range(7):
@@ -58,7 +63,7 @@ def verify():
         settings.hide();controller.validated=False;controller.changed.emit();service.Show();QTest.qWait(100);capture(popup,'account-form')
         problems=[w for w in warnings if any(word in w for word in ('ReferenceError','TypeError','SyntaxError','Cannot assign','Unable to assign','Binding loop','is not defined'))]
         assert not problems,problems
-        outcome.update(passed=True,checks=['native popup','Enter sends','Shift+Enter newline','Esc hides','draft retained','settings categories','account form'],qml_errors=problems)
+        outcome.update(passed=True,checks=['native popup','Enter sends','Shift+Enter newline','Esc hides','fresh conversation on reopen', 'old messages and draft retained', 'visible activation preserves current conversation','settings categories','account form'],qml_errors=problems)
     except Exception:
         outcome['error']=traceback.format_exc();outcome['warnings']=warnings
     finally:app.exit(0)

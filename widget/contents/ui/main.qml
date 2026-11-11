@@ -11,6 +11,7 @@ PlasmoidItem {
     toolTipSubText: serviceBridge.connected ? "Perguntar ou pedir ajuda" : "Instala o serviço O Amigo"
     hideOnWindowDeactivate: !JSON.parse(serviceBridge.stateJson).pinned
     Bridge { id: serviceBridge }
+    onExpandedChanged: { if (expanded && serviceBridge.connected) serviceBridge.newConversation(); }
     compactRepresentation: PC.ToolButton { icon.name: "help-hint"; text: "O Amigo"; onClicked: root.expanded = !root.expanded }
     fullRepresentation: Item {
         Layout.minimumWidth: 440; Layout.preferredWidth: 800

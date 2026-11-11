@@ -23,6 +23,7 @@ Item {
     Component.onCompleted: { syncMessages(); prompt.text = state.draft; }
     signal hideRequested()
     function focusComposer() { if (state.ready) prompt.forceActiveFocus(); else key.forceActiveFocus(); }
+    function saveDraft() { draftTimer.stop(); bridge.setDraft(prompt.text); }
     function refreshHistory() { bridge.requestHistory(historySearch.text, 0); }
     Connections {
         target: bridge
@@ -32,12 +33,14 @@ Item {
             view.state = JSON.parse(bridge.stateJson);
             view.syncMessages();
             if (oldId !== view.state.conversation) {
+                draftTimer.stop();
+                view.historyOpen = false;
                 prompt.text = view.state.draft;
             }
         }
     }
     Keys.onEscapePressed: { if (historyOpen) historyOpen = false; else hideRequested(); }
-    Shortcut { sequence: "Ctrl+N"; enabled: view.visible; onActivated: { bridge.newConversation(); focusComposer(); } }
+    Shortcut { sequence: "Ctrl+N"; enabled: view.visible; onActivated: { saveDraft(); bridge.newConversation(); focusComposer(); } }
     Timer { id: draftTimer; interval: 350; onTriggered: bridge.setDraft(prompt.text) }
     ColumnLayout {
         anchors.fill: parent
@@ -47,8 +50,8 @@ Item {
             visible: view.state.ready
             Kirigami.Heading { text: "O Amigo"; level: 2; Layout.fillWidth: true }
             PC.ToolButton { visible: !!view.state.browserEnabled; icon.name: "internet-web-browser"; text: "Ver browser"; display: QQC2.AbstractButton.IconOnly; onClicked: bridge.showBrowser(); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
-            PC.ToolButton { icon.name: "document-new"; text: "Nova conversa"; display: QQC2.AbstractButton.IconOnly; enabled: !view.state.busy; onClicked: { bridge.newConversation(); view.focusComposer(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
-            PC.ToolButton { icon.name: "view-history"; text: "Histórico"; display: QQC2.AbstractButton.IconOnly; enabled: !view.state.busy; checked: view.historyOpen; checkable: true; onClicked: { view.historyOpen = !view.historyOpen; if (view.historyOpen) view.refreshHistory(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
+            PC.ToolButton { icon.name: "document-new"; text: "Nova conversa"; display: QQC2.AbstractButton.IconOnly; enabled: !view.state.busy; onClicked: { view.saveDraft(); bridge.newConversation(); view.focusComposer(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
+            PC.ToolButton { icon.name: "view-history"; text: "Histórico"; display: QQC2.AbstractButton.IconOnly; checked: view.historyOpen; checkable: true; onClicked: { view.historyOpen = !view.historyOpen; if (view.historyOpen) view.refreshHistory(); } QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "window-pin"; text: "Fixar popup"; display: QQC2.AbstractButton.IconOnly; checkable: true; checked: view.state.pinned; onClicked: bridge.setPinned(checked); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
             PC.ToolButton { icon.name: "configure"; text: "Definições"; display: QQC2.AbstractButton.IconOnly; onClicked: bridge.openSettings(); QQC2.ToolTip.text: text; QQC2.ToolTip.visible: hovered }
         }
@@ -83,7 +86,7 @@ Item {
                             PC.Label { text: modelData.title; elide: Text.ElideRight; Layout.fillWidth: true }
                             PC.ToolButton { text: "Eliminar"; icon.name: "edit-delete"; display: QQC2.AbstractButton.IconOnly; onClicked: view.deleteId = modelData.id }
                         }
-                        onClicked: { bridge.selectConversation(modelData.id); view.historyOpen = false; view.focusComposer(); }
+                        onClicked: { view.saveDraft(); bridge.selectConversation(modelData.id); view.historyOpen = false; view.focusComposer(); }
                     }
                     QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
                 }
@@ -120,6 +123,12 @@ Item {
                     PC.Button { visible: !!view.state.task && ["paused", "failed", "interrupted"].indexOf(view.state.task.status) >= 0; text: "Continuar"; icon.name: "media-playback-start"; enabled: !view.state.busy; onClicked: bridge.resume() }
                     PC.Button { visible: view.state.busy; text: "Interromper"; icon.name: "process-stop"; onClicked: bridge.cancel() }
                     PC.Button { visible: !view.state.busy; text: "Enviar"; icon.name: "mail-send"; enabled: prompt.text.trim().length > 0; onClicked: { draftTimer.stop(); bridge.send(prompt.text, think.checked); prompt.text = ""; view.focusComposer(); } }
+                }
+                RowLayout {
+                    visible: !!view.state.backgroundConversation
+                    Layout.fillWidth: true
+                    PC.Label { text: "A conversa anterior continua em curso."; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    PC.Button { text: "Ver progresso"; onClicked: { view.saveDraft(); bridge.selectConversation(view.state.backgroundConversation); } }
                 }
                 ColumnLayout {
                     visible: !!view.state.approval
