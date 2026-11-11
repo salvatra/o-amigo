@@ -51,7 +51,7 @@ def verify():
         previous=controller.conversation
         QTest.keyClick(popup,Qt.Key.Key_Escape);QTest.qWait(50);assert not controller.visible
         service.Show();QTest.qWait(100)
-        assert controller.conversation!=previous and composer.property('text')==''
+        assert controller.conversation!=previous and composer.property('text')=='', {'new':controller.conversation!=previous,'text':composer.property('text'),'draft':controller.draft,'visible':controller.visible}
         assert len(controller.history.messages(previous))==2
         controller.selectConversation(previous);QTest.qWait(50);assert 'Primeira linha' in composer.property('text')
         current=controller.conversation;service.Show();QTest.qWait(50);assert controller.conversation==current

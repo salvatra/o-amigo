@@ -189,7 +189,7 @@ class Controller(QObject):
 
     @pyqtSlot()
     def newConversation(self):
-        self.conversation=self.history.new();self.agent.restore(self.conversation);self.notice='';self.reload()
+        self.conversation=self.history.new();self.notice='';self.reload();self.agent.restore(self.conversation)
 
     @pyqtSlot(str,int,result=str)
     def historyPage(self,query,offset):return json.dumps(self.history.conversations(query,offset),ensure_ascii=False)
@@ -199,7 +199,7 @@ class Controller(QObject):
     @pyqtSlot(str)
     def selectConversation(self,identifier):
         if not self.history.db.execute('SELECT id FROM conversations WHERE id=?',(identifier,)).fetchone():return
-        self.conversation=identifier;self.history.set_setting('active',identifier);self.agent.restore(identifier);self.reload()
+        self.conversation=identifier;self.history.set_setting('active',identifier);self.reload();self.agent.restore(identifier)
 
     @pyqtSlot(str)
     def deleteConversation(self,identifier):

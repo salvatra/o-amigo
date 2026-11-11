@@ -11,6 +11,7 @@ Item {
     property bool historyOpen: false
     property var historyRows: []
     property string deleteId: ""
+    property string displayedConversation: ""
     ListModel { id: messageModel }
     function syncMessages() {
         if (messageModel.count > state.messages.length || (messageModel.count && state.messages.length && messageModel.get(0).messageId !== state.messages[0].id)) messageModel.clear();
@@ -20,7 +21,7 @@ Item {
             if (i >= messageModel.count) messageModel.append(item); else messageModel.set(i, item);
         }
     }
-    Component.onCompleted: { syncMessages(); prompt.text = state.draft; }
+    Component.onCompleted: { syncMessages(); prompt.text = state.draft; displayedConversation = state.conversation; }
     signal hideRequested()
     function focusComposer() { if (state.ready) prompt.forceActiveFocus(); else key.forceActiveFocus(); }
     function saveDraft() { draftTimer.stop(); bridge.setDraft(prompt.text); }
@@ -29,7 +30,7 @@ Item {
         target: bridge
         function onHistoryReady(text, append) { view.historyRows = append ? view.historyRows.concat(JSON.parse(text)) : JSON.parse(text); }
         function onChanged() {
-            const oldId = view.state.conversation;
+            const oldId = view.displayedConversation;
             view.state = JSON.parse(bridge.stateJson);
             view.syncMessages();
             if (oldId !== view.state.conversation) {
@@ -37,6 +38,7 @@ Item {
                 view.historyOpen = false;
                 prompt.text = view.state.draft;
             }
+            view.displayedConversation = view.state.conversation;
         }
     }
     Keys.onEscapePressed: { if (historyOpen) historyOpen = false; else hideRequested(); }
